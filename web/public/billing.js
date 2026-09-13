@@ -468,7 +468,8 @@ export async function renderBilling(c, part, page) {
       `${b.project.title} · ${b.subdivision.parent_subdivision_id ? "Subcontract" : "Direct contract"}`,
       b.subdivision.scope,
       `${b.payer_name} → ${b.contractor_name}`,
-      link("View project", `project/${b.project.id}`),
+      link("View project", `project/${b.project.id}`) +
+        link("Reviews & disputes", `scope-trust/${part}`),
     ) +
     metrics([
       [

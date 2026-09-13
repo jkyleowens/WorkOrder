@@ -1,3 +1,4 @@
+import { renderTrust, reputationSummary, standingSummary } from "./trust.js";
 import { timeEntryForm } from "./time-entry.js";
 import {
   renderBilling,
@@ -68,6 +69,17 @@ const laborTable = (entries, name) => {
 export async function renderPage(c, route, part, page = 0) {
   c.data = {};
   const d = c.data;
+  if (
+    [
+      "credentials",
+      "trust-profile",
+      "trust-organization",
+      "trust-admin",
+      "scope-trust",
+      "dispute",
+    ].includes(route)
+  )
+    return renderTrust(c, route, part);
   if (route === "billing") return renderBilling(c, part, page);
   if (route === "application") return renderApplication(c, part);
   if (route === "waiver") return renderWaiver(c, part);
@@ -202,13 +214,22 @@ export async function renderPage(c, route, part, page = 0) {
         "Personal account",
         "Your profile",
         "Let people know what you do best.",
-        button("Edit profile", "profile", "", "primary") +
+        link("Credentials & verification", "credentials") +
+          link("Completed-work reputation", `trust-profile/${c.user.id}`) +
+          button("Edit profile", "profile", "", "primary") +
           button("Sign out", "logout", "", "secondary"),
       ) +
       `<div class="profile-layout"><section class="panel profile-card"><span class="avatar large">${initials(c.user.full_name)}</span><h2>${esc(c.user.full_name)}</h2><p>${esc(c.user.email)}</p>${status(c.user.availability_status)}<hr><span class="muted">Hourly rate</span><strong class="large-number">${money(c.user.hourly_rate)} <small>/ hour</small></strong></section>${panel("Skills & experience", `<p class="muted">Your skills help clients and employers find the right fit.</p><div class="tags">${c.user.skills.length ? c.user.skills.map((s) => `<span>${esc(s)}</span>`).join("") : "<p>No skills added yet. Edit your profile to get started.</p>"}</div><hr><h3>Your organizations</h3>${c.memberships.length ? c.memberships.map((m) => `<a class="list-row" href="#organization/${m.org_id}"><span class="grow"><strong>${esc(m.organization.name)}</strong><small>${esc(m.organization.trade_focus || "Organization")}</small></span>${status(m.internal_role)}</a>`).join("") : empty("Better together", "Create an organization or apply for a role to join one.", link("Explore organizations", "organizations"))}`)}</div>`
     );
   if (route === "people") {
     d.people = await paged("/users", page);
+    const profiles = await Promise.all(
+      d.people.map((u) => api(`/users/${u.id}`)),
+    );
+    d.people = d.people.map((u, i) => ({
+      ...u,
+      reputation: profiles[i].reputation,
+    }));
     return (
       heading(
         "Professional network",
@@ -218,12 +239,12 @@ export async function renderPage(c, route, part, page = 0) {
       `<div class="cards">${d.people
         .map(
           (u) =>
-            `<article class="card"><span class="avatar">${initials(u.full_name)}</span><h2>${esc(u.full_name)}</h2>${status(u.availability_status)}<div class="tags">${u.skills
+            `<article class="card"><span class="avatar">${initials(u.full_name)}</span><h2>${esc(u.full_name)}</h2>${status(u.availability_status)}${reputationSummary(u.reputation)}<div class="tags">${u.skills
               .slice(0, 8)
               .map((s) => `<span>${esc(s)}</span>`)
               .join(
                 "",
-              )}</div><div class="card-footer"><strong>${money(u.hourly_rate)} <small>/ hour</small></strong>${button("View profile", "person", u.id)}</div></article>`,
+              )}</div><div class="card-footer"><strong>${money(u.hourly_rate)} <small>/ hour</small></strong>${button("View profile", "person", u.id)}${link("Credentials & reputation", `trust-profile/${u.id}`)}</div></article>`,
         )
         .join("")}</div>` +
       pager("people", page, d.people.length)
@@ -370,7 +391,7 @@ export async function renderPage(c, route, part, page = 0) {
             : null;
         if (cost) projectCosts.push(cost);
         const finance = commercial.find((v) => v.id === s.id);
-        return `<article class="panel subdivision ${s.depth ? "child-scope" : ""}" id="scope-${s.id}" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Scope ${s.outline} · ${esc(s.awardedOrganization?.name || s.awardedUser?.full_name || "Awaiting contractor")}</span><h2>${esc(s.scope)}</h2>${parent ? `<a class="muted" href="#project/${p.id}">↳ ${esc(parent.scope)}</a>` : ""}</div>${status(s.status)}</div><div class="actions">${canManage && ["open", "awarded", "active"].includes(s.status) ? button("Add child scopes", "add-child", s.id) : ""}${s.status === "open" && !commission ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${["awarded", "active", "completed"].includes(s.status) && (own || s.awarded_user_id === c.user.id || manager || (parent && (parent.awarded_user_id === c.user.id || c.manages(parent.awarded_org_id)))) ? `<div class="scope-commercial">${link("Scope billing & changes", `billing/${s.id}`)}</div>` : ""}${finance ? `<div class="cost-strip scope-contract"><span>Amended price · USD<strong>${money(Number(finance.awarded) + Number(finance.accepted_changes))}</strong><small>Award ${money(finance.awarded)} + changes ${money(finance.accepted_changes)}</small></span><span>Certified, unpaid · USD<strong>${money(Number(finance.certified) - Number(finance.paid) - Number(finance.released))}</strong><small>Approved amounts less releases and recorded payments</small></span><span>Funded · USD<strong>${money(finance.funded)}</strong><small>${money(finance.released)} released via Stripe</small></span></div>` : ""}${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${cost?.labor?.length ? `<details class="labor-details"><summary>Labor by worker</summary>${laborTable(cost.labor)}</details>` : ""}${
+        return `<article class="panel subdivision ${s.depth ? "child-scope" : ""}" id="scope-${s.id}" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Scope ${s.outline} · ${esc(s.awardedOrganization?.name || s.awardedUser?.full_name || "Awaiting contractor")}</span><h2>${esc(s.scope)}</h2>${parent ? `<a class="muted" href="#project/${p.id}">↳ ${esc(parent.scope)}</a>` : ""}</div>${status(s.status)}</div><div class="actions">${commission && s.status === "open" ? button("Required credentials", "trust-requirements", s.id) : ""}${canManage && ["open", "awarded", "active"].includes(s.status) ? button("Add child scopes", "add-child", s.id) : ""}${s.status === "open" && !commission ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${["awarded", "active", "completed"].includes(s.status) && (own || s.awarded_user_id === c.user.id || manager || (parent && (parent.awarded_user_id === c.user.id || c.manages(parent.awarded_org_id)))) ? `<div class="scope-commercial">${link("Scope billing & changes", `billing/${s.id}`)}</div>` : ""}${finance ? `<div class="cost-strip scope-contract"><span>Amended price · USD<strong>${money(Number(finance.awarded) + Number(finance.accepted_changes))}</strong><small>Award ${money(finance.awarded)} + changes ${money(finance.accepted_changes)}</small></span><span>Certified, unpaid · USD<strong>${money(Number(finance.certified) - Number(finance.paid) - Number(finance.released))}</strong><small>Approved amounts less releases and recorded payments</small></span><span>Funded · USD<strong>${money(finance.funded)}</strong><small>${money(finance.released)} released via Stripe</small></span></div>` : ""}${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${cost?.labor?.length ? `<details class="labor-details"><summary>Labor by worker</summary>${laborTable(cost.labor)}</details>` : ""}${
           commission
             ? `<h3>Bids ${bids.length ? `(${bids.length})` : ""}</h3>${
                 bids.length
@@ -378,7 +399,12 @@ export async function renderPage(c, route, part, page = 0) {
                       ["Bidder", "Amount", "Status", ""],
                       bids.map((b) =>
                         row([
-                          esc(b.organization?.name || b.user?.full_name),
+                          link(
+                            b.organization?.name || b.user?.full_name,
+                            `${b.bidding_org_id ? "trust-organization" : "trust-profile"}/${b.bidding_org_id || b.bidding_user_id}`,
+                          ) +
+                            standingSummary(b.standing) +
+                            reputationSummary(b.reputation),
                           money(b.amount),
                           status(b.status),
                           b.status === "pending" && s.status === "open"
@@ -591,7 +617,11 @@ export async function renderPage(c, route, part, page = 0) {
         : "")
     );
   }
-  if (route === "organizations")
+  if (route === "organizations") {
+    const profiles = await Promise.all(
+      c.memberships.map((m) => api(`/organizations/${m.org_id}/profile`)),
+    );
+    const reputations = new Map(profiles.map((p) => [p.id, p.reputation]));
     return (
       heading(
         "Your organizations",
@@ -600,13 +630,14 @@ export async function renderPage(c, route, part, page = 0) {
         button("Create organization", "organization", "", "primary"),
       ) +
       (c.memberships.length
-        ? `<div class="cards">${c.memberships.map((m) => `<article class="card"><div class="card-top"><span class="avatar">${initials(m.organization.name)}</span>${status(m.internal_role)}</div><h2>${esc(m.organization.name)}</h2>${typeBadges(m.organization.organization_types)}<p>${esc(m.organization.trade_focus || "A shared place for your team and its work.")}</p><div class="card-footer">${link("View organization", `organization/${m.org_id}`)}${c.manages(m.org_id) ? link("Control panel", `organization/${m.org_id}`) : ""}</div></article>`).join("")}</div>`
+        ? `<div class="cards">${c.memberships.map((m) => `<article class="card"><div class="card-top"><span class="avatar">${initials(m.organization.name)}</span>${status(m.internal_role)}</div><h2>${esc(m.organization.name)}</h2>${typeBadges(m.organization.organization_types)}${reputationSummary(reputations.get(m.org_id))}<p>${esc(m.organization.trade_focus || "A shared place for your team and its work.")}</p><div class="card-footer">${link("View organization", `organization/${m.org_id}`)}${link("Credentials & reputation", `trust-organization/${m.org_id}`)}${c.manages(m.org_id) ? link("Control panel", `organization/${m.org_id}`) : ""}</div></article>`).join("")}</div>`
         : empty(
             "Start something together",
             "Create an organization to bid on projects, hire people, and share resources.",
             button("Create organization", "organization", "", "primary"),
           ))
     );
+  }
   if (route === "organization") {
     const membership = c.memberships.find((m) => m.org_id === Number(part));
     if (!membership) throw new Error("You do not belong to this organization.");

@@ -97,6 +97,7 @@ const navigation = [
   ["organizations", "Organizations", "people"],
   ["people", "People & skills", "people"],
   ["profile", "My profile", "profile"],
+  ["credentials", "Trust & verification", "profile"],
 ];
 function shell(route) {
   const selected = ["application", "waiver", "waivers"].includes(route)

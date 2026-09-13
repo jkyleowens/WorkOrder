@@ -140,3 +140,9 @@ See [the implementation record](../Planning/Phase%201/Implementation.md) for
 calculation rules, supported scope, Stripe integration sequence and remaining
 roadmap items. See [the design system](DESIGN_SYSTEM.md) for reusable components.
 Migration `006-scope-billing.sql` is applied by the normal startup migration flow.
+
+### Trust and verification
+
+Use **Trust & verification** to submit credentials for yourself or an organization you manage. Administrators see a **Verification queue** link there. Project commissioners set **Required credentials** on open scopes; bidder profiles display expiry and verification information. People and organization cards link to dated completed-work reputation.
+
+Open **Billing → a scope → Reviews & disputes** to rate completed work or open a dispute, attach evidence, propose a split, respond, or download a dated JSON packet. Resolving a dispute records its agreed release/refund split; Billing shows subsequent payment processing. Credential review is manual, and pending credentials are identified as unverified.
