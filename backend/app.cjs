@@ -177,7 +177,7 @@ function createApp(
   const orgInclude = (as = "organization") => ({
     model: m.Organization,
     as,
-    attributes: ["id", "name", "trade_focus"],
+    attributes: ["id", "name", "trade_focus", "organization_types"],
   });
   const bidIncludes = [
     userInclude("user"),
@@ -193,6 +193,38 @@ function createApp(
     app[method](`/api${path}`, async (req, res) =>
       res.status(status).json(await fn(req)),
     );
+  send("get", "/notifications", (req) =>
+    m.Notification.findAll({
+      where: {
+        user_id: req.user.id,
+        ...(req.query.unread === "true" ? { read_at: null } : {}),
+      },
+      ...schemas.page.parse({
+        limit: req.query.limit,
+        offset: req.query.offset,
+      }),
+      order: [["id", "DESC"]],
+    }),
+  );
+  send("get", "/notifications/unread-count", async (req) => ({
+    count: await m.Notification.count({
+      where: { user_id: req.user.id, read_at: null },
+    }),
+  }));
+  send("patch", "/notifications/read-all", async (req) => {
+    await m.Notification.update(
+      { read_at: new Date() },
+      { where: { user_id: req.user.id, read_at: null } },
+    );
+    return { ok: true };
+  });
+  send("patch", "/notifications/:id", async (req) => {
+    const item = await m.Notification.findOne({
+      where: { id: param(req), user_id: req.user.id },
+    });
+    check(item, 404, "Notification not found");
+    return item.update({ read_at: item.read_at || new Date() });
+  });
   send("get", "/users", async (req) =>
     m.User.findAll({
       ...page(req),

@@ -1,5 +1,7 @@
 import { api, all, write } from "./api.js";
 import {
+  typeFields,
+  typeValues,
   esc,
   money,
   today,
@@ -110,6 +112,16 @@ export async function action(c, name, id) {
       null,
     );
   }
+  if (name === "read-notification")
+    return done(
+      () => write(`/notifications/${id}`, {}, "PATCH"),
+      "Marked as read",
+    );
+  if (name === "read-all")
+    return done(
+      () => write("/notifications/read-all", {}, "PATCH"),
+      "All notifications marked as read",
+    );
   if (name === "organization")
     return modal(
       "Create an organization",
@@ -121,8 +133,13 @@ export async function action(c, name, id) {
         'required maxlength="160"',
       ) +
         field("Trade or focus", "trade_focus", "text", "", 'maxlength="160"') +
+        typeFields() +
         '<p class="hint">You’ll become the owner. Post a role to invite people to apply and join.</p>',
-      (v) => done(() => write("/organizations", v), "Organization created"),
+      (v) =>
+        done(
+          () => write("/organizations", typeValues(v)),
+          "Organization created",
+        ),
       "Create organization",
     );
   if (name === "edit-organization")
@@ -141,10 +158,16 @@ export async function action(c, name, id) {
           "text",
           d.organization.trade_focus,
           'maxlength="160"',
-        ),
+        ) +
+        typeFields(d.organization.organization_types),
       (v) =>
         done(
-          () => write(`/organizations/${d.organization.id}`, v, "PATCH"),
+          () =>
+            write(
+              `/organizations/${d.organization.id}`,
+              typeValues(v),
+              "PATCH",
+            ),
           "Organization updated",
         ),
     );

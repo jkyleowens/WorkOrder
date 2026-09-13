@@ -64,6 +64,23 @@ class PlatformService {
     if (d.org_id) await this.member(user, d.org_id, null, true);
     return d;
   }
+  async notify(user, org, actor, title, body, route, transaction) {
+    const recipients = new Set(user ? [user] : []);
+    if (org) {
+      const members = await this.m.OrganizationMember.findAll({
+        where: { org_id: org },
+        transaction,
+      });
+      for (const member of members)
+        if (["owner", "manager"].includes(member.internal_role))
+          recipients.add(member.user_id);
+    }
+    recipients.delete(actor);
+    await this.m.Notification.bulkCreate(
+      [...recipients].map((user_id) => ({ user_id, title, body, route })),
+      { transaction },
+    );
+  }
   async createOrg(user, input) {
     const d = schemas.organization.parse(input);
     return this.db.transaction(async (t) => {
@@ -220,6 +237,15 @@ class PlatformService {
         409,
         "Offer changed. Refresh before responding.",
       );
+      await this.notify(
+        job.posted_by_user_id,
+        job.posted_by_org_id,
+        user,
+        "New pay request",
+        `A candidate sent a pay request for ${job.title}.`,
+        `job/${job.id}`,
+        t,
+      );
       return app.update(
         {
           desired_rate: d.desired_rate,
@@ -306,6 +332,15 @@ class PlatformService {
           409,
           "Already a member",
         );
+      await this.notify(
+        job.posted_by_user_id,
+        job.posted_by_org_id,
+        user,
+        "New application",
+        `Someone applied for ${job.title}. Review their application and requested pay.`,
+        `job/${job.id}`,
+        t,
+      );
       return this.m.JobApplication.create(
         {
           job_posting_id: id,
@@ -384,6 +419,16 @@ class PlatformService {
           "Already a member. Ask an administrator to update your company pay.",
         );
       }
+      const employerAction = ["offered", "rejected"].includes(action);
+      await this.notify(
+        employerAction ? app.applicant_user_id : job.posted_by_user_id,
+        employerAction ? null : job.posted_by_org_id,
+        user,
+        `Application ${action}`,
+        `${job.title}: the application is now ${action}. Open the details to review current terms.`,
+        employerAction ? "jobs/applications" : `job/${job.id}`,
+        t,
+      );
       return app.update(
         {
           status: action,
@@ -517,6 +562,28 @@ class PlatformService {
           "Client organization cannot bid",
         );
       }
+      const parent = s.parent_subdivision_id
+        ? await this.get("ProjectSubdivision", s.parent_subdivision_id, t)
+        : null;
+      await this.notify(
+        p.client_user_id,
+        null,
+        user,
+        "New project bid",
+        `A bid was submitted for ${s.scope}.`,
+        `project/${p.id}`,
+        t,
+      );
+      if (parent && parent.awarded_user_id !== p.client_user_id)
+        await this.notify(
+          parent.awarded_user_id,
+          parent.awarded_org_id,
+          user,
+          "New subcontract bid",
+          `A bid was submitted for ${s.scope}.`,
+          `project/${p.id}`,
+          t,
+        );
       return this.m.Bid.create(
         {
           subdivision_id: id,
@@ -553,6 +620,15 @@ class PlatformService {
         { where: { subdivision_id: s.id, status: "pending" }, transaction: t },
       );
       await b.update({ status: "accepted" }, { transaction: t });
+      await this.notify(
+        b.bidding_user_id,
+        b.bidding_org_id,
+        user,
+        "Bid awarded",
+        `Your bid for ${s.scope} was awarded.`,
+        `project/${p.id}`,
+        t,
+      );
       await s.update(
         {
           awarded_user_id: b.bidding_user_id,

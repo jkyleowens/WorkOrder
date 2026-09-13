@@ -52,6 +52,20 @@ const schemas = {
   organization: z
     .object({
       name: text(160),
+      organization_types: z
+        .array(
+          z.enum([
+            "contractor",
+            "supplier",
+            "labor_union",
+            "client",
+            "consultant",
+            "other",
+          ]),
+        )
+        .max(6)
+        .refine((v) => new Set(v).size === v.length, "Choose each type once")
+        .optional(),
       trade_focus: z.string().trim().max(160).default(""),
     })
     .strict(),

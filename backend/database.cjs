@@ -2,6 +2,17 @@ const { Sequelize, DataTypes: D, Model } = require("sequelize");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const definitions = {
+  Notification: [
+    "notifications",
+    {
+      user_id: D.INTEGER,
+      title: D.STRING,
+      body: D.TEXT,
+      route: D.STRING,
+      read_at: D.DATE,
+      created_at: D.DATE,
+    },
+  ],
   User: [
     "users",
     {
@@ -15,7 +26,12 @@ const definitions = {
   ],
   Organization: [
     "organizations",
-    { name: D.STRING, created_by_user_id: D.INTEGER, trade_focus: D.STRING },
+    {
+      name: D.STRING,
+      created_by_user_id: D.INTEGER,
+      trade_focus: D.STRING,
+      organization_types: D.JSONB,
+    },
   ],
   OrganizationRole: [
     "organization_roles",

@@ -1617,3 +1617,198 @@ dialog form {
   font-weight: 600;
   padding: 0.75rem 0;
 }
+
+/* Shared finishing details */
+:root {
+  --muted: #617168;
+  --line: #dfe6df;
+}
+.workspace {
+  background:
+    radial-gradient(ellipse at top right, #eaf0e5 0, transparent 48%), #f6f7f4;
+}
+.topbar {
+  background: #ffffffeb;
+}
+.panel,
+.card,
+.stat {
+  border-radius: 14px;
+  box-shadow: 0 3px 14px #203d2e04;
+}
+.card {
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.card:hover {
+  border-color: #b7cbbd;
+  box-shadow: 0 7px 22px #203d2e09;
+}
+.stat > span {
+  color: #526559;
+  font-size: 12px;
+  font-weight: 500;
+}
+.stat > small {
+  color: #657360;
+  font-size: 11px;
+}
+.btn {
+  min-height: 40px;
+  border-radius: 8px;
+}
+.btn.primary {
+  box-shadow: 0 2px 4px #123d2920;
+}
+.sidebar nav a {
+  border-radius: 9px;
+}
+:focus-visible {
+  outline: 2px solid #35745b;
+  outline-offset: 3px;
+}
+tbody tr:hover {
+  background: #f8faf6;
+}
+.type-picker {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 0;
+}
+.type-picker legend {
+  padding: 0 5px;
+  font-weight: 600;
+}
+.type-picker > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.type-picker label {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 9px;
+  padding: 10px;
+  background: #f5f8f2;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.type-picker input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--green);
+}
+.organization-types {
+  margin: 12px 0;
+}
+.organization-types span {
+  background: #edf3e8;
+  color: #345d44;
+}
+.unread-count {
+  margin-left: auto;
+  background: var(--green);
+  color: white;
+  border-radius: 20px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 650;
+}
+.inbox-shortcut {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 50%;
+}
+.inbox-shortcut:hover {
+  background: #edf3e8;
+}
+.unread-indicator {
+  position: absolute;
+  top: 6px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #39734d;
+  outline: 2px solid white;
+}
+.inbox-list {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.notification {
+  display: flex;
+  gap: 20px;
+  padding: 26px;
+  border-bottom: 1px solid var(--line);
+}
+.notification:last-child {
+  border-bottom: 0;
+}
+.notification.is-unread {
+  background: #f4f8ef;
+  box-shadow: inset 3px 0 var(--green);
+}
+.notification .grow {
+  min-width: 0;
+}
+.notification h2,
+.notification p {
+  overflow-wrap: anywhere;
+}
+.notification h2 {
+  margin-bottom: 6px;
+}
+.notification p {
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.notification-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.notification-meta time {
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 800px) {
+  .notification {
+    padding: 20px;
+    gap: 12px;
+  }
+  .notification > .square-icon {
+    display: none;
+  }
+}
+@media (max-width: 480px) {
+  .type-picker > div {
+    grid-template-columns: 1fr;
+  }
+  .notification {
+    padding: 18px;
+  }
+  .notification .actions {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

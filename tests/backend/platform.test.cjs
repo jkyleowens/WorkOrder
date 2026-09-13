@@ -82,7 +82,7 @@ test("versioned migrations are repeatable and model associations resolve", async
   const [rows] = await database.db.query(
     "SELECT count(*)::int AS n FROM schema_migrations",
   );
-  assert.equal(rows[0].n, 4);
+  assert.equal(rows[0].n, 5);
   const u = await user(),
     o = await s.createOrg(u.id, { name: "Builder" });
   assert.equal((await o.getCreator()).id, u.id);
@@ -986,10 +986,8 @@ test("pay negotiation requires current consent and snapshots organization agreem
   const costs = await s.costs(client.id, sub.id);
   assert.equal(Number(costs.labor_cost), 236);
   assert.equal(costs.labor.length, 3);
-  assert.equal(
-    costs.labor.every((r) => r.user_id === worker.id),
-    true,
-  );
+  assert.equal(costs.labor.filter((r) => r.user_id === worker.id).length, 2);
+  assert.equal(costs.labor.filter((r) => r.user_id === owner.id).length, 1);
   const report = await s.orgDashboard(owner.id, org.id, {
     from: "2026-09-13",
     to: "2026-09-13",
@@ -1065,4 +1063,102 @@ test("company roles stay within an organization and zero pay overrides role defa
   assert.equal(Number(entry.hourly_rate), 0);
   const otherMember = await s.member(owner.id, other.id);
   assert.equal(otherMember.hourly_rate, null);
+});
+
+test("organization types persist independently from access roles", async () => {
+  const owner = await user(),
+    outsider = await user();
+  const org = await s.createOrg(owner.id, {
+    name: "Flexible team",
+    organization_types: ["contractor", "supplier", "labor_union"],
+  });
+  assert.deepEqual(org.organization_types, [
+    "contractor",
+    "supplier",
+    "labor_union",
+  ]);
+  await s.editOrg(owner.id, org.id, {
+    name: "Flexible team",
+    organization_types: ["supplier"],
+  });
+  assert.deepEqual((await s.get("Organization", org.id)).organization_types, [
+    "supplier",
+  ]);
+  await s.editOrg(owner.id, org.id, { name: "Renamed" });
+  assert.deepEqual((await s.get("Organization", org.id)).organization_types, [
+    "supplier",
+  ]);
+  await reject(
+    () =>
+      s.editOrg(outsider.id, org.id, {
+        name: "Hijacked",
+        organization_types: [],
+      }),
+    403,
+  );
+  await assert.rejects(() =>
+    s.createOrg(owner.id, { name: "Invalid", organization_types: ["admin"] }),
+  );
+});
+
+test("notifications are transactional, private, and retain read state", async () => {
+  const owner = await user(),
+    applicant = await user();
+  const job = await s.postJob(owner.id, {
+    title: "Installer",
+    description: "Install fixtures",
+    hourly_rate: 30,
+  });
+  const application = await s.apply(applicant.id, job.id);
+  const notifications = () =>
+    database.models.Notification.findAll({ where: { user_id: owner.id } });
+  assert.equal((await notifications()).length, 1);
+  await assert.rejects(() => s.apply(applicant.id, job.id));
+  assert.equal((await notifications()).length, 1);
+  await s.applicationAction(owner.id, application.id, "offered", {
+    offered_rate: 32,
+  });
+  const login = async (u) => {
+    const agent = request.agent(runtime.app);
+    const csrf = (await agent.get("/api/auth/csrf")).body.csrf_token;
+    const response = await agent
+      .post("/api/auth/login")
+      .set("X-CSRF-Token", csrf)
+      .send({ email: u.email, password: "test-password-123" })
+      .expect(200);
+    return { agent, token: response.body.csrf_token };
+  };
+  const a = await login(applicant),
+    b = await login(owner);
+  const inbox = (await a.agent.get("/api/notifications").expect(200)).body;
+  assert.equal(inbox.length, 1);
+  assert.equal(inbox[0].title, "Application offered");
+  await b.agent
+    .patch(`/api/notifications/${inbox[0].id}`)
+    .set("X-CSRF-Token", b.token)
+    .send({})
+    .expect(404);
+  await a.agent
+    .patch(`/api/notifications/${inbox[0].id}`)
+    .set("X-CSRF-Token", a.token)
+    .send({})
+    .expect(200);
+  assert.equal(
+    (await a.agent.get("/api/notifications/unread-count")).body.count,
+    0,
+  );
+  assert.equal(
+    (await a.agent.get("/api/notifications?unread=true")).body.length,
+    0,
+  );
+  assert.ok((await a.agent.get("/api/notifications")).body[0].read_at);
+  await b.agent
+    .patch("/api/notifications/read-all")
+    .set("X-CSRF-Token", b.token)
+    .send({})
+    .expect(200);
+  assert.equal(
+    (await b.agent.get("/api/notifications/unread-count")).body.count,
+    0,
+  );
 });

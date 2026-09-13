@@ -16,19 +16,19 @@ The original Electron prototype and its preview are separate; they do not use th
 
 ## Console workflows
 
-| Area | Supported actions |
-| --- | --- |
-| Account | Register, sign in, sign out, restore the session after refresh; edit name, skills, hourly rate, and availability |
-| Context selector | Switch between personal, client, and organizations where you are an owner or manager |
-| Overview | Read current hours, assignments, inventory counts, client projects, and pending offers |
-| Projects | Browse the market, post projects with optional subdivisions, review client projects and assignments, edit unbid scopes, cancel unawarded projects |
-| Bidding | Bid as yourself or an organization, review/withdraw bids, award a bidder per subdivision |
-| Execution | Start/complete subdivisions; log time and consume personal or matching organization materials; inspect labor and material costs |
-| Employment | Browse jobs, post personal or organization roles, apply, make/reject offers, accept/withdraw applications, close postings, review hiring history |
-| Organizations | Create an organization, view its roster and shared inventory, change non-owner member roles as the owner |
-| Time & reports | Personal daily grid, date-range totals and individual entries; edit/delete eligible entries; organization hours and costs grouped by worker and subdivision |
-| Inventory | Add items, receive stock and update future unit costs, consume stock on assigned work, inspect movement history |
-| People & skills | Browse public profiles, skills, availability, and rates |
+| Area             | Supported actions                                                                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Account          | Register, sign in, sign out, restore the session after refresh; edit name, skills, hourly rate, and availability                                            |
+| Context selector | Switch between personal, client, and organizations where you are an owner or manager                                                                        |
+| Overview         | Read current hours, assignments, inventory counts, client projects, and pending offers                                                                      |
+| Projects         | Browse the market, post projects with optional subdivisions, review client projects and assignments, edit unbid scopes, cancel unawarded projects           |
+| Bidding          | Bid as yourself or an organization, review/withdraw bids, award a bidder per subdivision                                                                    |
+| Execution        | Start/complete subdivisions; log time and consume personal or matching organization materials; inspect labor and material costs                             |
+| Employment       | Browse jobs, post personal or organization roles, apply, make/reject offers, accept/withdraw applications, close postings, review hiring history            |
+| Organizations    | Create an organization, view its roster and shared inventory, change non-owner member roles as the owner                                                    |
+| Time & reports   | Personal daily grid, date-range totals and individual entries; edit/delete eligible entries; organization hours and costs grouped by worker and subdivision |
+| Inventory        | Add items, receive stock and update future unit costs, consume stock on assigned work, inspect movement history                                             |
+| People & skills  | Browse public profiles, skills, availability, and rates                                                                                                     |
 
 Employment acceptance is the membership entry path: an employer offers a role and the applicant accepts it. Ordinary members use personal context to record organization work; the award determines where it rolls up. Organization mode is reserved for managers and owners. All permissions are checked by the server even when the UI hides an unavailable action.
 
@@ -105,3 +105,20 @@ labor cost per worker; project totals count each scope once. Bid amounts remain
 separate from actual hourly labor costs. Existing unpriced jobs remain compatible
 with older clients; migration `004-pay-and-company-roles.sql` preserves all saved
 timesheet rates.
+
+## Organization types and inbox
+
+Organizations can select any combination of Contractor, Supplier, Labor union,
+Client / developer, Consultant, and Other during creation or in organization
+settings. These describe the organization and appear on its cards and profile;
+they do not change owner/manager/member permissions or company job roles.
+Existing organizations start without a selected type.
+
+The Inbox stores notifications for new applications, pay requests, application
+offers and responses, new project/subcontract bids, and awarded bids. Organization
+owners and managers receive relevant hiring and bid notifications. Users can
+filter unread activity, open the relevant work, mark individual notifications as
+read, or mark all as read. Read state persists across sessions. Counts refresh
+when navigating or refreshing; this is an activity inbox, without direct-message
+composition or live push. Notifications begin with new activity after migration.
+Migration `005-organization-types-inbox.sql` is applied at server startup.

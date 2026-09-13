@@ -494,3 +494,98 @@ test("company roles, negotiated pay and member overrides stay connected", async 
     await workerContext.close();
   }
 });
+
+test("organization types and notification inbox persist across refresh", async ({
+  browser,
+}) => {
+  const employerContext = await browser.newContext(),
+    applicantContext = await browser.newContext();
+  const employer = await employerContext.newPage(),
+    applicant = await applicantContext.newPage();
+  try {
+    await register(employer, "Inbox Employer", "inbox-employer@example.com");
+    await register(applicant, "Inbox Applicant", "inbox-applicant@example.com");
+    await nav(employer, "Organizations");
+    await employer
+      .getByRole("button", { name: "Create organization", exact: true })
+      .first()
+      .click();
+    await employer.getByLabel("Organization name").fill("United Trades");
+    await employer.getByLabel("Supplier", { exact: true }).check();
+    await employer.getByLabel("Labor union", { exact: true }).check();
+    await submit(employer, "Create organization");
+    await employer.reload();
+    await expect(employer.locator(".organization-types")).toContainText(
+      "Supplier",
+    );
+    await organization(employer);
+    await employer.getByRole("button", { name: "Edit organization" }).click();
+    await expect(
+      employer.getByLabel("Labor union", { exact: true }),
+    ).toBeChecked();
+    await employer.getByLabel("Contractor", { exact: true }).check();
+    await submit(employer, "Save changes");
+    await employer
+      .getByRole("button", { name: "Post a job", exact: true })
+      .click();
+    await employer.getByLabel("Job title").fill("Inbox installer");
+    await employer
+      .getByLabel("Description", { exact: true })
+      .fill("Install equipment");
+    await employer.getByLabel("Advertised hourly pay").fill("30");
+    await submit(employer, "Post job");
+    await nav(applicant, "Employment");
+    await applicant
+      .getByRole("article")
+      .filter({ hasText: "Inbox installer" })
+      .getByRole("link", { name: "View role" })
+      .click();
+    await confirm(applicant, "Apply for this role", "Apply");
+    await nav(employer, "Inbox");
+    await expect(
+      employer.getByRole("heading", { name: "New application", exact: true }),
+    ).toBeVisible();
+    await employer.screenshot({
+      path: "test-results/inbox-desktop.png",
+      fullPage: true,
+    });
+    await employer
+      .getByRole("link", { name: "View details", exact: true })
+      .click();
+    await confirm(employer, "Make offer");
+    await nav(applicant, "Inbox");
+    await expect(
+      applicant.getByRole("heading", { name: "Application offered" }),
+    ).toBeVisible();
+    await applicant
+      .getByRole("button", { name: "Mark as read", exact: true })
+      .click();
+    await expect(applicant.locator(".notification.is-unread")).toHaveCount(0);
+    await applicant.reload();
+    await expect(applicant.locator(".notification-meta")).toContainText("READ");
+    await applicant
+      .getByRole("link", { name: "Unread (0)", exact: true })
+      .click();
+    await expect(
+      applicant.getByRole("heading", { name: "You’re all caught up" }),
+    ).toBeVisible();
+    await employer.setViewportSize({ width: 390, height: 844 });
+    await nav(employer, "Inbox");
+    await employer.screenshot({
+      path: "test-results/inbox-mobile.png",
+      fullPage: true,
+    });
+    expect(
+      await employer.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await employer
+      .getByRole("button", { name: "Mark all as read", exact: true })
+      .click();
+    await expect(employer.locator(".notification.is-unread")).toHaveCount(0);
+  } finally {
+    await employerContext.close();
+    await applicantContext.close();
+  }
+});

@@ -36,6 +36,7 @@ export const initials = (name) =>
   );
 export const icon = (name) => {
   const paths = {
+    inbox: "M3 4h18v16H3z M3 13h5l2 3h4l2-3h5 M7 8h10",
     overview: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
     projects: "M3 7h18v14H3z M8 7V3h8v4",
     jobs: "M4 4h16v17H4z M8 9h8 M8 13h8 M8 17h4",
@@ -124,3 +125,23 @@ export function modal(title, body, onSubmit, submit = "Save changes") {
 }
 export const confirm = (title, message, onSubmit, label = "Confirm") =>
   modal(title, `<p>${esc(message)}</p>`, onSubmit, label);
+
+export const organizationTypes = [
+  ["contractor", "Contractor"],
+  ["supplier", "Supplier"],
+  ["labor_union", "Labor union"],
+  ["client", "Client / developer"],
+  ["consultant", "Consultant"],
+  ["other", "Other"],
+];
+export const typeBadges = (types = []) =>
+  `<div class="tags organization-types">${types.map((type) => `<span>${esc(organizationTypes.find(([key]) => key === type)?.[1] || type)}</span>`).join("")}</div>`;
+export const typeFields = (types = []) =>
+  `<fieldset class="type-picker"><legend>Organization types</legend><p class="hint">Choose all that describe your organization. You can change these later.</p><div>${organizationTypes.map(([key, label]) => `<label><input type="checkbox" name="type_${key}" ${types.includes(key) ? "checked" : ""}>${esc(label)}</label>`).join("")}</div></fieldset>`;
+export const typeValues = (values) => ({
+  name: values.name,
+  trade_focus: values.trade_focus,
+  organization_types: organizationTypes
+    .filter(([key]) => values[`type_${key}`])
+    .map(([key]) => key),
+});

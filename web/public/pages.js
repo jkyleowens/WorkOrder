@@ -1,5 +1,6 @@
 import { api, all } from "./api.js";
 import {
+  typeBadges,
   esc,
   money,
   today,
@@ -59,6 +60,39 @@ const laborTable = (entries, name) => {
 export async function renderPage(c, route, part, page = 0) {
   c.data = {};
   const d = c.data;
+  if (route === "inbox") {
+    const unreadOnly = part === "unread";
+    const result = await api(
+      `/notifications?limit=20&offset=${page * 20}${unreadOnly ? "&unread=true" : ""}`,
+    );
+    d.notifications = result;
+    return (
+      heading(
+        "YOUR UPDATES",
+        "Inbox",
+        "Hiring updates and project activity, together in one place.",
+        c.unread ? button("Mark all as read", "read-all") : "",
+      ) +
+      tabs(
+        [
+          ["all", "All activity", "inbox"],
+          ["unread", `Unread (${c.unread || 0})`, "inbox/unread"],
+        ],
+        unreadOnly ? "unread" : "all",
+      ) +
+      (result.length
+        ? `<section class="inbox-list" aria-label="Notifications">${result.map((n) => `<article class="notification ${n.read_at ? "" : "is-unread"}"><span class="square-icon">${icon("inbox")}</span><div class="grow"><div class="notification-meta"><span class="eyebrow">${n.read_at ? "READ" : "NEW UPDATE"}</span><time datetime="${esc(n.created_at)}">${esc(dateLabel(n.created_at))}</time></div><h2>${esc(n.title)}</h2><p>${esc(n.body)}</p><div class="actions">${link("View details", n.route)}${!n.read_at ? button("Mark as read", "read-notification", n.id) : ""}</div></div></article>`).join("")}</section>` +
+          pager(unreadOnly ? "inbox/unread" : "inbox", page, result.length)
+        : empty(
+            unreadOnly
+              ? "You’re all caught up"
+              : "Your updates will appear here",
+            unreadOnly
+              ? "You have no unread notifications."
+              : "We’ll let you know when applications, pay requests, offers, and bids need your attention.",
+          ))
+    );
+  }
   if (route === "overview") {
     const [projects, assignments, applications, inventory, report] =
       await Promise.all([
@@ -518,7 +552,7 @@ export async function renderPage(c, route, part, page = 0) {
         button("Create organization", "organization", "", "primary"),
       ) +
       (c.memberships.length
-        ? `<div class="cards">${c.memberships.map((m) => `<article class="card"><div class="card-top"><span class="avatar">${initials(m.organization.name)}</span>${status(m.internal_role)}</div><h2>${esc(m.organization.name)}</h2><p>${esc(m.organization.trade_focus || "A shared place for your team and its work.")}</p><div class="card-footer">${link("View organization", `organization/${m.org_id}`)}${c.manages(m.org_id) ? link("Control panel", `organization/${m.org_id}`) : ""}</div></article>`).join("")}</div>`
+        ? `<div class="cards">${c.memberships.map((m) => `<article class="card"><div class="card-top"><span class="avatar">${initials(m.organization.name)}</span>${status(m.internal_role)}</div><h2>${esc(m.organization.name)}</h2>${typeBadges(m.organization.organization_types)}<p>${esc(m.organization.trade_focus || "A shared place for your team and its work.")}</p><div class="card-footer">${link("View organization", `organization/${m.org_id}`)}${c.manages(m.org_id) ? link("Control panel", `organization/${m.org_id}`) : ""}</div></article>`).join("")}</div>`
         : empty(
             "Start something together",
             "Create an organization to bid on projects, hire people, and share resources.",
@@ -539,6 +573,7 @@ export async function renderPage(c, route, part, page = 0) {
       : null;
     return (
       '<a class="back" href="#organizations">← Organizations</a>' +
+      typeBadges(membership.organization.organization_types) +
       heading(
         "Organization",
         membership.organization.name,
