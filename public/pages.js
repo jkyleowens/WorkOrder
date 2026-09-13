@@ -1,4 +1,4 @@
-import { api, all } from "../../public/api.js";
+import { api, all } from "./api.js";
 import {
   esc,
   money,
