@@ -794,6 +794,7 @@ export async function renderPage(c, route, part, page = 0) {
                     "Date",
                     "Member",
                     "Work",
+                    "Clock times",
                     "Hours",
                     "Hourly rate",
                     "Labor cost",
@@ -801,6 +802,7 @@ export async function renderPage(c, route, part, page = 0) {
                 : [
                     "Date",
                     "Work",
+                    "Clock times",
                     "Hours",
                     "Hourly rate",
                     "Labor cost",
@@ -817,6 +819,9 @@ export async function renderPage(c, route, part, page = 0) {
                           titles.get(e.subdivision_id) ||
                             `Subdivision ${e.subdivision_id}`,
                         ),
+                        e.start_time
+                          ? `${esc(e.start_time.slice(0, 5))} – ${esc(e.end_time.slice(0, 5))}`
+                          : "Times not recorded",
                         esc(e.hours),
                         money(e.hourly_rate),
                         money(e.labor_cost),
@@ -824,6 +829,9 @@ export async function renderPage(c, route, part, page = 0) {
                     : [
                         dateLabel(e.date),
                         `<strong>${esc(titles.get(e.subdivision_id) || `Subdivision ${e.subdivision_id}`)}</strong><small>${e.org_id ? esc(organizationName(c, e.org_id)) : "Independent work"}</small>`,
+                        e.start_time
+                          ? `${esc(e.start_time.slice(0, 5))} – ${esc(e.end_time.slice(0, 5))}`
+                          : "Times not recorded",
                         esc(e.hours),
                         money(e.hourly_rate),
                         money(Number(e.hours) * Number(e.hourly_rate)),

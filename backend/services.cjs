@@ -566,7 +566,14 @@ class PlatformService {
       }
       for (const rule of this.bidRules)
         await rule(
-          { user, userId: org_id ? null : user, orgId: org_id || null, s, p, phase: "bid" },
+          {
+            user,
+            userId: org_id ? null : user,
+            orgId: org_id || null,
+            s,
+            p,
+            phase: "bid",
+          },
           t,
         );
       const parent = s.parent_subdivision_id
@@ -624,7 +631,14 @@ class PlatformService {
       check(s.status === "open" && b.status === "pending");
       for (const rule of this.bidRules)
         await rule(
-          { user, userId: b.bidding_user_id, orgId: b.bidding_org_id, s, p, phase: "award" },
+          {
+            user,
+            userId: b.bidding_user_id,
+            orgId: b.bidding_org_id,
+            s,
+            p,
+            phase: "award",
+          },
           t,
         );
       await this.m.Bid.update(
@@ -881,7 +895,10 @@ class PlatformService {
       // every new entry being added for that date in this batch.
       const byDate = new Map();
       for (const entry of d.entries)
-        byDate.set(entry.date, (byDate.get(entry.date) || 0) + Math.round(entry.hours * 100));
+        byDate.set(
+          entry.date,
+          (byDate.get(entry.date) || 0) + Math.round(entry.hours * 100),
+        );
       for (const [entryDate, addedHours] of byDate) {
         const existing =
           (await this.m.Timesheet.sum("hours", {
@@ -898,6 +915,8 @@ class PlatformService {
         d.entries.map((entry) => ({
           subdivision_id: d.subdivision_id,
           hours: entry.hours,
+          start_time: entry.start_time,
+          end_time: entry.end_time,
           date: entry.date,
           note: entry.note,
           user_id: user,
@@ -927,6 +946,25 @@ class PlatformService {
       await this.performer(user, s, t);
       await this.get("User", user, t, true);
       const row = await this.get("Timesheet", id, t, true);
+      // Revalidate the merged interval; changing clocks derives a fresh duration.
+      const clocksChanged =
+        d.start_time !== undefined || d.end_time !== undefined;
+      const next = schemas.time.parse({
+        subdivision_id: row.subdivision_id,
+        date: d.date || row.date,
+        note: d.note ?? row.note,
+        start_time:
+          d.start_time !== undefined
+            ? d.start_time
+            : row.start_time?.slice(0, 5) || null,
+        end_time:
+          d.end_time !== undefined
+            ? d.end_time
+            : row.end_time?.slice(0, 5) || null,
+        ...(!clocksChanged || (d.start_time === null && d.end_time === null)
+          ? { hours: Number(d.hours ?? row.hours) }
+          : {}),
+      });
       const total =
         (await this.m.Timesheet.sum("hours", {
           where: {
@@ -937,11 +975,11 @@ class PlatformService {
           transaction: t,
         })) || 0;
       check(
-        Number(total) + Number(d.hours ?? row.hours) <= 24,
+        Math.round(Number(total) * 100) + Math.round(next.hours * 100) <= 2400,
         409,
         "Daily time exceeds 24 hours",
       );
-      return row.update(d, { transaction: t });
+      return row.update(next, { transaction: t });
     });
   }
   async deleteTime(user, id) {
@@ -969,7 +1007,7 @@ class PlatformService {
       { bind, transaction },
     );
     const [groups] = await this.db.query(
-      `SELECT subdivision_id,user_id,date,hourly_rate::text AS hourly_rate,sum(hours)::text AS hours,sum(round(hours*hourly_rate,2))::text AS labor_cost FROM timesheets WHERE ${where}=$actor AND date BETWEEN $from AND $to GROUP BY subdivision_id,user_id,date,hourly_rate ORDER BY date,subdivision_id,user_id`,
+      `SELECT subdivision_id,user_id,date,start_time,end_time,hourly_rate::text AS hourly_rate,sum(hours)::text AS hours,sum(round(hours*hourly_rate,2))::text AS labor_cost FROM timesheets WHERE ${where}=$actor AND date BETWEEN $from AND $to GROUP BY subdivision_id,user_id,date,start_time,end_time,hourly_rate ORDER BY date,subdivision_id,user_id`,
       { bind, transaction },
     );
     return { ...range, ...totals[0], entries: groups };

@@ -19,6 +19,53 @@ const date = z
       new Date(s).toISOString().slice(0, 10) === s,
     "Invalid date",
   );
+const clockTime = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
+const timeFields = {
+  hours: z
+    .number()
+    .positive()
+    .max(24)
+    .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 0.0001)
+    .optional(),
+  start_time: clockTime.nullable().optional(),
+  end_time: z
+    .union([clockTime, z.literal("24:00")])
+    .nullable()
+    .optional(),
+};
+function normalizeTime(d, ctx) {
+  const start = d.start_time,
+    end = d.end_time;
+  if (start == null && end == null) {
+    if (d.hours === undefined)
+      ctx.addIssue({
+        code: "custom",
+        message: "Enter start and end times or hours",
+      });
+    return d;
+  }
+  if (start == null || end == null) {
+    ctx.addIssue({ code: "custom", message: "Enter both start and end times" });
+    return d;
+  }
+  const minutes = (value) =>
+    Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
+  const finish = end === "00:00" ? "24:00" : end;
+  const duration = minutes(finish) - minutes(start);
+  if (duration <= 0)
+    ctx.addIssue({
+      code: "custom",
+      message:
+        "End time must be after start time. Split overnight work across dates.",
+    });
+  const hours = Math.round((duration / 60) * 100) / 100;
+  if (d.hours !== undefined && d.hours !== hours)
+    ctx.addIssue({
+      code: "custom",
+      message: "Hours must match start and end times",
+    });
+  return { ...d, start_time: start, end_time: finish, hours };
+}
 const profile = {
   full_name: text(120),
   skills: z.array(text(80)).max(50),
@@ -168,24 +215,16 @@ const schemas = {
   time: z
     .object({
       subdivision_id: id,
-      hours: z
-        .number()
-        .positive()
-        .max(24)
-        .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 0.0001),
+      ...timeFields,
       date,
       note: z.string().max(2000).default(""),
       org_id: id.optional(),
     })
-    .strict(),
+    .strict()
+    .transform(normalizeTime),
   timeEdit: z
     .object({
-      hours: z
-        .number()
-        .positive()
-        .max(24)
-        .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 0.0001)
-        .optional(),
+      ...timeFields,
       date: date.optional(),
       note: z.string().max(2000).optional(),
     })
@@ -199,17 +238,12 @@ const schemas = {
         .array(
           z
             .object({
-              hours: z
-                .number()
-                .positive()
-                .max(24)
-                .refine(
-                  (n) => Math.abs(n * 100 - Math.round(n * 100)) < 0.0001,
-                ),
+              ...timeFields,
               date,
               note: z.string().max(2000).default(""),
             })
-            .strict(),
+            .strict()
+            .transform(normalizeTime),
         )
         .min(1)
         .max(31),

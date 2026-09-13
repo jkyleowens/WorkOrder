@@ -758,11 +758,28 @@ export async function action(c, name, id) {
     const entry = d.entries.find((e) => e.id === id);
     return modal(
       "Edit time entry",
-      `<p>Saved hourly rate: <strong>${money(entry.hourly_rate)}</strong></p><div class="form-grid">${field("Date worked", "date", "date", entry.date, "required")}${field("Hours", "hours", "number", entry.hours, 'required min="0.01" max="24" step="0.01"')}</div>` +
+      `<p>Saved hourly rate: <strong>${money(entry.hourly_rate)}</strong></p><div class="form-grid">${field("Date worked", "date", "date", entry.date, "required")}${entry.start_time ? field("Start time", "start_time", "time", entry.start_time.slice(0, 5), "required") + field("End time", "end_time", "time", entry.end_time.startsWith("24:") ? "00:00" : entry.end_time.slice(0, 5), "required") : field("Hours", "hours", "number", entry.hours, 'required min="0.01" max="24" step="0.01"') + field("Start time (optional)", "start_time", "time", "") + field("End time (optional)", "end_time", "time", "")}</div>` +
+        (!entry.start_time
+          ? '<p class="hint">Add both clock times to place this entry on the grid. Hours will be calculated from those times.</p>'
+          : "") +
         textarea("Note", "note", entry.note, 'maxlength="2000"'),
       (v) =>
         done(
-          () => write(`/time/${id}`, { ...v, hours: Number(v.hours) }, "PATCH"),
+          () =>
+            write(
+              `/time/${id}`,
+              {
+                date: v.date,
+                note: v.note,
+                ...(v.start_time || v.end_time
+                  ? {
+                      start_time: v.start_time || null,
+                      end_time: v.end_time || null,
+                    }
+                  : { hours: Number(v.hours) }),
+              },
+              "PATCH",
+            ),
           "Time updated",
         ),
     );

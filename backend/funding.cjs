@@ -1,3 +1,4 @@
+const { payoutAging } = require("./payout-aging.cjs");
 const { z } = require("zod");
 const { Op } = require("sequelize");
 const { check } = require("./validation.cjs");
@@ -14,7 +15,9 @@ const money = z
   );
 const key = z.uuid();
 const schemas = {
-  account: z.object({ org_id: z.number().int().positive().optional() }).strict(),
+  account: z
+    .object({ org_id: z.number().int().positive().optional() })
+    .strict(),
   funding: z.object({ amount: money, request_key: key }).strict(),
   release: z
     .object({
@@ -169,7 +172,10 @@ class FundingService {
   }
   async accounts(user) {
     const memberships = await this.m.OrganizationMember.findAll({
-      where: { user_id: user, internal_role: { [Op.in]: ["owner", "manager"] } },
+      where: {
+        user_id: user,
+        internal_role: { [Op.in]: ["owner", "manager"] },
+      },
     });
     const rows = await this.m.PaymentAccount.findAll({
       where: {
@@ -185,14 +191,13 @@ class FundingService {
         const payouts = await this.m.ProviderPayout.findAll({
           where: { payment_account_id: account.id },
           order: [["id", "DESC"]],
-          limit: 20,
           raw: true,
         });
-        const lastPaid = payouts.find((p) => p.status === "paid");
-        const [oldest] = await this.db.query(
-          `SELECT min(created_at) AS at FROM scope_releases WHERE payment_account_id=$1 AND status='paid' AND ($2::timestamptz IS NULL OR created_at > $2)`,
-          { bind: [account.id, lastPaid?.created_at || null] },
-        );
+        const releases = await this.m.ScopeRelease.findAll({
+          where: { payment_account_id: account.id },
+          raw: true,
+        });
+        const aging = payoutAging(releases, payouts, account.country);
         let balance = null;
         if (this.provider && account.transfers_active)
           balance = await this.provider
@@ -204,11 +209,54 @@ class FundingService {
         return {
           ...this.publicAccount(account),
           balance,
-          payouts,
-          // Manual payouts must leave the connected balance within Stripe's holding period (US: two years).
-          oldest_unpaid_release_at: oldest[0]?.at || null,
+          payouts: payouts.slice(0, 20),
+          aging,
+          oldest_unpaid_release_at: aging.oldest_unpaid_release_at,
         };
       }),
+    );
+  }
+  async holdingReport(user) {
+    const actor = await this.platform.get("User", user);
+    check(
+      actor.platform_role === "admin",
+      403,
+      "Platform administrator access required",
+    );
+    return this.db.transaction(
+      { isolationLevel: "REPEATABLE READ" },
+      async (t) => {
+        const accounts = await this.m.PaymentAccount.findAll({
+          order: [["id", "ASC"]],
+          transaction: t,
+          raw: true,
+        });
+        const releases = await this.m.ScopeRelease.findAll({
+          transaction: t,
+          raw: true,
+        });
+        const payouts = await this.m.ProviderPayout.findAll({
+          transaction: t,
+          raw: true,
+        });
+        return accounts
+          .map((a) => ({
+            id: a.id,
+            owner_user_id: a.owner_user_id,
+            owner_org_id: a.owner_org_id,
+            country: a.country,
+            ...payoutAging(
+              releases.filter((r) => r.payment_account_id === a.id),
+              payouts.filter((p) => p.payment_account_id === a.id),
+              a.country,
+            ),
+          }))
+          .sort((a, b) =>
+            (a.next_deadline || "9999").localeCompare(
+              b.next_deadline || "9999",
+            ),
+          );
+      },
     );
   }
   // ---- Scope ledger -------------------------------------------------------
@@ -235,7 +283,8 @@ class FundingService {
     const refunded = records.refunds
       .filter(
         (r) =>
-          r.funding_id === f.id && ["processing", "succeeded"].includes(r.status),
+          r.funding_id === f.id &&
+          ["processing", "succeeded"].includes(r.status),
       )
       .reduce((n, r) => n + cents(r.amount), 0n);
     const released = releasedAmount(
@@ -245,7 +294,10 @@ class FundingService {
   }
   summarize(records, held = 0n) {
     const succeeded = records.fundings.filter((f) => f.status === "succeeded");
-    const received = succeeded.reduce((n, f) => n + cents(f.amount_received), 0n);
+    const received = succeeded.reduce(
+      (n, f) => n + cents(f.amount_received),
+      0n,
+    );
     const refunded = records.refunds
       .filter((r) => r.status === "succeeded")
       .reduce((n, r) => n + cents(r.amount), 0n);
@@ -262,7 +314,9 @@ class FundingService {
       funded: amount(received),
       refunded: amount(refunded),
       released: amount(
-        releasedAmount(records.releases.filter((r) => r.status !== "processing")),
+        releasedAmount(
+          records.releases.filter((r) => r.status !== "processing"),
+        ),
       ),
       releasing: amount(
         records.releases
@@ -304,7 +358,8 @@ class FundingService {
           // Only the paying party may reopen its pending checkout.
           return {
             ...rest,
-            checkout_url: ctx.payer && f.status === "pending" ? checkout_url : null,
+            checkout_url:
+              ctx.payer && f.status === "pending" ? checkout_url : null,
             available: amount(this.fundingAvailable(f, records)),
           };
         }),
@@ -340,12 +395,16 @@ class FundingService {
       }
       const records = await this.ledgerRecords(id, t);
       check(
-        !records.fundings.some((f) => ["pending", "processing"].includes(f.status)),
+        !records.fundings.some((f) =>
+          ["pending", "processing"].includes(f.status),
+        ),
         409,
         "Finish, cancel or refresh the open funding checkout before starting another",
       );
       const billingRecords = await this.billing.records(id, t);
-      const contract = cents(this.billing.totals(ctx, billingRecords).contract_value);
+      const contract = cents(
+        this.billing.totals(ctx, billingRecords).contract_value,
+      );
       const committed =
         records.fundings
           .filter((f) => f.status === "succeeded")
@@ -425,9 +484,16 @@ class FundingService {
   sessionState(session) {
     if (session.status === "expired") return "expired";
     if (session.status !== "complete") return "pending";
-    if (session.payment_status === "paid" || session.payment_status === "no_payment_required")
+    if (
+      session.payment_status === "paid" ||
+      session.payment_status === "no_payment_required"
+    )
       return "succeeded";
-    if (["canceled", "requires_payment_method"].includes(session.payment_intent_status))
+    if (
+      ["canceled", "requires_payment_method"].includes(
+        session.payment_intent_status,
+      )
+    )
       return "failed";
     return "processing";
   }
@@ -445,7 +511,8 @@ class FundingService {
         return funding;
       if (next === funding.status) return funding;
       const update = { status: next, updated_at: new Date() };
-      if (session.payment_intent_id) update.payment_intent_id = session.payment_intent_id;
+      if (session.payment_intent_id)
+        update.payment_intent_id = session.payment_intent_id;
       if (session.charge_id) update.charge_id = session.charge_id;
       if (next === "succeeded") {
         check(
@@ -459,7 +526,10 @@ class FundingService {
         );
       }
       if (next === "failed")
-        update.failure_message = (session.last_error || "Payment failed").slice(0, 2000);
+        update.failure_message = (session.last_error || "Payment failed").slice(
+          0,
+          2000,
+        );
       await funding.update(update, { transaction: t });
       if (["succeeded", "failed"].includes(next)) {
         const ctx = await this.scopeParties(funding.subdivision_id, t);
@@ -480,7 +550,11 @@ class FundingService {
     const s = await this.platform.get("ProjectSubdivision", id, t);
     const p = await this.platform.get("Project", s.project_id, t);
     const parent = s.parent_subdivision_id
-      ? await this.platform.get("ProjectSubdivision", s.parent_subdivision_id, t)
+      ? await this.platform.get(
+          "ProjectSubdivision",
+          s.parent_subdivision_id,
+          t,
+        )
       : null;
     const payerOrg = parent?.awarded_org_id || null;
     return {
@@ -508,7 +582,9 @@ class FundingService {
       if (existing.length) {
         check(
           existing.every(
-            (r) => r.subdivision_id === id && r.application_id === data.application_id,
+            (r) =>
+              r.subdivision_id === id &&
+              r.application_id === data.application_id,
           ) &&
             existing.reduce((n, r) => n + cents(r.amount), 0n) ===
               cents(data.amount),
@@ -561,7 +637,8 @@ class FundingService {
       const external = billingRecords.payments
         .filter((p) => p.application_id === application.id)
         .reduce(
-          (n, p) => n + (p.reverses_payment_id ? -cents(p.amount) : cents(p.amount)),
+          (n, p) =>
+            n + (p.reverses_payment_id ? -cents(p.amount) : cents(p.amount)),
           0n,
         );
       const already = releasedAmount(
@@ -615,7 +692,10 @@ class FundingService {
   async sendRelease(row, provider = this.requireProvider()) {
     if (row.status !== "processing" || row.provider_transfer_id) return row;
     const funding = await this.platform.get("ScopeFunding", row.funding_id);
-    const account = await this.platform.get("PaymentAccount", row.payment_account_id);
+    const account = await this.platform.get(
+      "PaymentAccount",
+      row.payment_account_id,
+    );
     try {
       const transfer = await provider.createTransfer({
         amount: row.amount,
@@ -668,7 +748,11 @@ class FundingService {
       this.billing.context(user, row.subdivision_id, t),
     );
     check(ctx.payer && !ctx.contractor, 403, "Only the paying party can retry");
-    check(row.status === "processing", 409, "Only processing releases can be retried");
+    check(
+      row.status === "processing",
+      409,
+      "Only processing releases can be retried",
+    );
     return this.sendRelease(row);
   }
   // ---- Refunds of unreleased funding -------------------------------------
@@ -678,14 +762,19 @@ class FundingService {
     const row = await this.db.transaction(async (t) => {
       const first = await this.platform.get("ScopeFunding", fundingId, t);
       const ctx = await this.billing.context(user, first.subdivision_id, t);
-      check(ctx.payer && !ctx.contractor, 403, "Only the paying party can refund funding");
+      check(
+        ctx.payer && !ctx.contractor,
+        403,
+        "Only the paying party can refund funding",
+      );
       const existing = await this.m.ScopeRefund.findOne({
         where: { request_key: data.request_key },
         transaction: t,
       });
       if (existing) {
         check(
-          existing.funding_id === fundingId && cents(existing.amount) === cents(data.amount),
+          existing.funding_id === fundingId &&
+            cents(existing.amount) === cents(data.amount),
           409,
           "This request key was already used",
         );
@@ -741,9 +830,7 @@ class FundingService {
   async applyRefund(refund, localId, outer) {
     const run = async (t) => {
       const row = await this.m.ScopeRefund.findOne({
-        where: localId
-          ? { id: localId }
-          : { provider_refund_id: refund.id },
+        where: localId ? { id: localId } : { provider_refund_id: refund.id },
         transaction: t,
         lock: t.LOCK.UPDATE,
       });
@@ -782,7 +869,11 @@ class FundingService {
     const provider = this.requireProvider();
     const data = schemas.payout.parse(input);
     const account = await this.manageAccount(user, accountId);
-    check(account.payouts_enabled, 409, "Finish payout onboarding before paying out");
+    check(
+      account.payouts_enabled,
+      409,
+      "Finish payout onboarding before paying out",
+    );
     const existing = await this.m.ProviderPayout.findOne({
       where: { request_key: data.request_key },
     });
@@ -845,7 +936,12 @@ class FundingService {
       await this.db.query(
         `INSERT INTO provider_events(id,type,account,payload) VALUES ($1,$2,$3,$4) ON CONFLICT (id) DO NOTHING`,
         {
-          bind: [event.id, event.type, event.account || null, JSON.stringify(event)],
+          bind: [
+            event.id,
+            event.type,
+            event.account || null,
+            JSON.stringify(event),
+          ],
           transaction: t,
         },
       );
@@ -855,17 +951,22 @@ class FundingService {
       );
       if (stored.processed_at) return { received: true, duplicate: true };
       await this.handle(event, object, session, t);
-      await this.db.query("UPDATE provider_events SET processed_at=now() WHERE id=$1", {
-        bind: [event.id],
-        transaction: t,
-      });
+      await this.db.query(
+        "UPDATE provider_events SET processed_at=now() WHERE id=$1",
+        {
+          bind: [event.id],
+          transaction: t,
+        },
+      );
       return { received: true };
     });
   }
   async handle(event, object, session, t) {
     if (session) {
       const forced =
-        event.type === "checkout.session.async_payment_failed" ? "failed" : undefined;
+        event.type === "checkout.session.async_payment_failed"
+          ? "failed"
+          : undefined;
       return this.applySession(session, forced, t);
     }
     if (event.type === "account.updated") {
@@ -881,21 +982,33 @@ class FundingService {
         });
       return;
     }
-    if (event.type.startsWith("refund.")) return this.applyRefund(object, null, t);
-    if (event.type === "transfer.reversed" || event.type === "transfer.updated") {
+    if (event.type.startsWith("refund."))
+      return this.applyRefund(object, null, t);
+    if (
+      event.type === "transfer.reversed" ||
+      event.type === "transfer.updated"
+    ) {
       const found = await this.m.ScopeRelease.findOne({
         where: { provider_transfer_id: object.id },
         transaction: t,
       });
       if (!found) return;
       await this.platform.work(found.subdivision_id, t);
-      const release = await this.platform.get("ScopeRelease", found.id, t, true);
+      const release = await this.platform.get(
+        "ScopeRelease",
+        found.id,
+        t,
+        true,
+      );
       const reversed = (Number(object.amount_reversed || 0) / 100).toFixed(2);
       if (cents(reversed) <= cents(release.amount_reversed)) return;
       await release.update(
         {
           amount_reversed: reversed,
-          status: cents(reversed) === cents(release.amount) ? "reversed" : release.status,
+          status:
+            cents(reversed) === cents(release.amount)
+              ? "reversed"
+              : release.status,
           updated_at: new Date(),
         },
         { transaction: t },
@@ -910,7 +1023,24 @@ class FundingService {
         transaction: t,
         lock: t.LOCK.UPDATE,
       });
-      if (!payout || ["paid", "failed", "canceled"].includes(payout.status)) return;
+      if (!payout) return;
+      const account = await this.platform.get(
+        "PaymentAccount",
+        payout.payment_account_id,
+        t,
+      );
+      check(
+        event.account === account.provider_account_id,
+        400,
+        "Payout event account does not match",
+      );
+      // A bank can return a payout after Stripe initially reported it paid.
+      // Failed/canceled remain terminal; stale pending events cannot undo paid.
+      if (
+        ["failed", "canceled"].includes(payout.status) ||
+        (payout.status === "paid" && object.status !== "failed")
+      )
+        return;
       await payout.update(
         {
           status: object.status,
@@ -923,7 +1053,12 @@ class FundingService {
     }
     if (event.type.startsWith("charge.dispute.")) {
       const funding = await this.m.ScopeFunding.findOne({
-        where: { charge_id: typeof object.charge === "string" ? object.charge : object.charge?.id },
+        where: {
+          charge_id:
+            typeof object.charge === "string"
+              ? object.charge
+              : object.charge?.id,
+        },
         transaction: t,
         lock: t.LOCK.UPDATE,
       });

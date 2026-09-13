@@ -19,10 +19,19 @@ test("daily timeline renders durations, pans across dates and zooms to seconds",
         assignments: [{ id: 1, scope: "Foundation" }],
         entries: [
           {
+            id: 4,
+            subdivision_id: 1,
+            date: "2026-09-08",
+            hours: 4,
+            note: "Legacy hours",
+          },
+          {
             id: 1,
             subdivision_id: 1,
             date: "2026-09-07",
             hours: 2,
+            start_time: "00:00:00",
+            end_time: "02:00:00",
             note: "Morning work",
           },
           {
@@ -30,6 +39,8 @@ test("daily timeline renders durations, pans across dates and zooms to seconds",
             subdivision_id: 1,
             date: "2026-09-07",
             hours: 1.5,
+            start_time: "02:00:00",
+            end_time: "03:30:00",
             note: "Finishing",
           },
           {
@@ -37,6 +48,8 @@ test("daily timeline renders durations, pans across dates and zooms to seconds",
             subdivision_id: 1,
             date: "2026-09-18",
             hours: 1,
+            start_time: "00:00:00",
+            end_time: "01:00:00",
             note: "Later date",
           },
         ],
@@ -46,6 +59,7 @@ test("daily timeline renders durations, pans across dates and zooms to seconds",
   });
   const blocks = page.locator(".timeline-block");
   await expect(blocks).toHaveCount(2);
+  await expect(page.locator(".timeline-unplaced")).toContainText("4 h");
   await expect(page.locator(".timeline-day").first()).toContainText(
     "3.50 h worked",
   );

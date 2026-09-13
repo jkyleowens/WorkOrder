@@ -38,18 +38,27 @@ const paidFor = (b, id) =>
         ["processing", "paid", "reversed"].includes(r.status),
     )
     .reduce((n, r) => n + Number(r.amount) - Number(r.amount_reversed), 0);
-const hashQuery = () =>
-  new URLSearchParams(location.hash.split("?")[1] || "");
+const hashQuery = () => new URLSearchParams(location.hash.split("?")[1] || "");
 const redirect = (url) => {
   // Stripe-hosted pages are the only external destinations; never follow anything else.
   const target = new URL(url);
-  if (target.protocol !== "https:" || !/(^|\.)stripe\.com$/.test(target.hostname))
+  if (
+    target.protocol !== "https:" ||
+    !/(^|\.)stripe\.com$/.test(target.hostname)
+  )
     throw new Error("Unexpected payment redirect");
   location.assign(target.href);
 };
 const fundingTable = (f, can) =>
   table(
-    ["Funding", "Amount · USD", "Status", "Confirmed · USD", "Awaiting release · USD", ""],
+    [
+      "Funding",
+      "Amount · USD",
+      "Status",
+      "Confirmed · USD",
+      "Awaiting release · USD",
+      "",
+    ],
     f.fundings
       .slice()
       .reverse()
@@ -119,7 +128,12 @@ const fundingPanel = (b, f) => {
                   `<strong>PA-${number(r.application_id)}</strong><small>${esc(dateLabel(r.created_at))} · from F-${number(r.funding_id)}</small>`,
                   `${money(r.amount)}${Number(r.amount_reversed) ? `<small>${money(r.amount_reversed)} reversed</small>` : ""}`,
                   status(r.status),
-                  esc(r.failure_message || (r.status === "paid" ? "In contractor’s Stripe balance" : "—")),
+                  esc(
+                    r.failure_message ||
+                      (r.status === "paid"
+                        ? "In contractor’s Stripe balance"
+                        : "—"),
+                  ),
                   r.status === "processing" && can.payer && !can.contractor
                     ? button("Retry release", "billing-release-retry", r.id)
                     : "—",
@@ -194,7 +208,8 @@ export async function renderWaiver(c, id) {
 }
 export async function renderWaiverChain(c, projectId) {
   const chain = await api(`/projects/${projectId}/waivers`);
-  const count = (state) => chain.waivers.filter((w) => w.status === state).length;
+  const count = (state) =>
+    chain.waivers.filter((w) => w.status === state).length;
   const depth = (scope) => {
     let n = 0,
       parent = scope.parent_subdivision_id;
@@ -218,7 +233,9 @@ export async function renderWaiverChain(c, projectId) {
       ? `<p class="hint">${chain.complete ? "No waivers are awaiting signature." : "The chain is incomplete until every requested waiver is signed."}</p>` +
         chain.scopes
           .map((scope) => {
-            const rows = chain.waivers.filter((w) => w.subdivision_id === scope.id);
+            const rows = chain.waivers.filter(
+              (w) => w.subdivision_id === scope.id,
+            );
             return `<section class="waiver-scope ${depth(scope) ? "child-scope" : ""}"><h2>${depth(scope) ? "↳ " : ""}${esc(scope.scope)}</h2>${rows.length ? waiverRows(rows, null) : '<p class="muted">No waivers yet for this work package.</p>'}</section>`;
           })
           .join("")
@@ -229,7 +246,7 @@ export async function renderWaiverChain(c, projectId) {
     `<p class="document-footer">WorkOrder · Waiver chain generated ${esc(new Date().toLocaleString())}. Includes only work packages visible to your account.</p></article>`
   );
 }
-const HOLDING_YEARS = 2;
+
 async function renderPayouts(c) {
   let result = await api("/payment-accounts");
   if (hashQuery().get("onboarding")) {
@@ -268,14 +285,7 @@ async function renderPayouts(c) {
           : a.transfers_active && a.payouts_enabled
             ? "active"
             : "onboarding";
-        const deadline = a?.oldest_unpaid_release_at
-          ? new Date(
-              new Date(a.oldest_unpaid_release_at).setFullYear(
-                new Date(a.oldest_unpaid_release_at).getFullYear() +
-                  HOLDING_YEARS,
-              ),
-            ).toISOString()
-          : null;
+        const deadline = a?.aging?.next_deadline;
         return panel(
           name,
           `<p>${status(state)}</p>` +
@@ -283,7 +293,10 @@ async function renderPayouts(c) {
               ? `<div class="cost-strip"><span>Available to pay out<strong>${a.balance ? usd(a.balance.available) : "—"}</strong></span><span>Pending at Stripe<strong>${a.balance ? usd(a.balance.pending) : "—"}</strong></span></div>` +
                 `<p class="hint">${a.requirements.length ? `Stripe needs ${a.requirements.length} more item${a.requirements.length === 1 ? "" : "s"} before payouts are enabled.` : a.payouts_enabled ? "Verified by Stripe for payouts." : "Onboarding in progress."} Status checked ${esc(dateLabel(a.updated_at))}.</p>` +
                 (deadline
-                  ? `<p class="hint">Payouts are manual. Your oldest released funds not yet paid out arrived ${esc(dateLabel(a.oldest_unpaid_release_at))}; Stripe requires US balances to be paid out within ${HOLDING_YEARS} years, by ${esc(dateLabel(deadline))}.</p>`
+                  ? `<p class="hint">${usd(a.aging.remaining)} of recorded releases remains unpaid to the bank. The oldest funds are due by ${esc(dateLabel(deadline))}. Partial payouts pay down the oldest recorded releases first.</p>`
+                  : "") +
+                (a.aging?.needs_reconciliation
+                  ? '<p role="alert">Payout and reversal records need reconciliation. Review the ledger before relying on these deadlines.</p>'
                   : "") +
                 (a.payouts.length
                   ? table(
@@ -301,7 +314,12 @@ async function renderPayouts(c) {
               : '<p class="muted">Set up a Stripe payout account to receive released funds for this party’s awarded work.</p>'),
           `<div class="actions">${
             !a || !a.transfers_active || !a.payouts_enabled
-              ? button(a ? "Continue onboarding" : "Set up payouts", "billing-onboard", org || "", "primary")
+              ? button(
+                  a ? "Continue onboarding" : "Set up payouts",
+                  "billing-onboard",
+                  org || "",
+                  "primary",
+                )
               : ""
           }${a ? button("Refresh status", "billing-account-refresh", a.id) : ""}${
             a?.payouts_enabled && Number(a.balance?.available) > 0
@@ -334,6 +352,53 @@ export const applicationNumbers = (s) =>
       "",
     )}</dl><p class="hint">Previous payments recorded at preparation: ${usd(s.previous_payments)}. Prior approved amounts are deducted even when unpaid, so they are never billed twice. Stored materials must exclude anything already consumed.</p>`;
 export async function renderBilling(c, part, page) {
+  if (part === "holding") {
+    const accounts = await api("/admin/payout-holding");
+    return (
+      heading(
+        "Administration",
+        "Payout holding deadlines",
+        "Recorded bank payouts are applied to the oldest eligible releases. Pending and failed payouts do not clear deadlines.",
+      ) +
+      '<p class="hint">This tracks WorkOrder releases and payouts. Reconcile fees, bank activity and payments made directly in Stripe separately. Reversed funds already paid out are flagged for review.</p>' +
+      table(
+        [
+          "Account",
+          "Country",
+          "Release / scope",
+          "Remaining · USD",
+          "Due",
+          "Status",
+        ],
+        accounts.flatMap((a) =>
+          a.lots.map((l) =>
+            row([
+              esc(
+                a.owner_org_id
+                  ? `Organization ${a.owner_org_id}`
+                  : `User ${a.owner_user_id}`,
+              ),
+              esc(a.country),
+              link(
+                `Release ${l.release_id} · scope ${l.subdivision_id}`,
+                `billing/${l.subdivision_id}`,
+              ),
+              money(l.remaining),
+              esc(dateLabel(l.deadline)),
+              esc(l.urgency.replace("_", " ")),
+            ]),
+          ),
+        ),
+      ) +
+      accounts
+        .filter((a) => a.needs_reconciliation)
+        .map(
+          (a) =>
+            `<p role="alert">Account ${a.id}: ${usd(a.unmatched_payouts)} unmatched payouts; ${usd(a.reversed_after_payout)} reversed after payout. Reconciliation required.</p>`,
+        )
+        .join("")
+    );
+  }
   if (part === "payouts") return renderPayouts(c);
   if (!part) {
     const rows = await api(`/billing?limit=20&offset=${page * 20}`);
@@ -343,7 +408,7 @@ export async function renderBilling(c, part, page) {
         "Commercial workspace · USD",
         "Keep the work and the money connected",
         "Review scope changes, certify progress and track payments in one place.",
-        `<div class="actions">${link("Payouts", "billing/payouts")}${link("Your projects", "projects/mine")}</div>`,
+        `<div class="actions">${link("Payouts", "billing/payouts")}${c.user.platform_role === "admin" ? link("Holding deadlines", "billing/holding") : ""}${link("Your projects", "projects/mine")}</div>`,
       ) +
       `<div class="billing-notice"><span class="square-icon">↗</span><div><strong>From agreed scope to a clear payment record</strong><p>Applications use recorded labor and materials. Paying parties can fund a scope through Stripe and release funds against approved applications; external payment records document transactions made elsewhere.</p></div></div>` +
       (rows.length
@@ -363,7 +428,9 @@ export async function renderBilling(c, part, page) {
                   `<strong>${esc(r.project_title)}</strong><small>${esc(r.scope)}</small><small>${esc(r.contractor_name)}${r.parent_subdivision_id ? " · Subcontract" : " · Direct contract"}</small>`,
                   money(Number(r.awarded) + Number(r.accepted_changes)),
                   `${money(r.funded)}<small>${money(r.released)} released</small>`,
-                  money(Number(r.certified) - Number(r.paid) - Number(r.released)),
+                  money(
+                    Number(r.certified) - Number(r.paid) - Number(r.released),
+                  ),
                   `<span>${r.pending_applications} applications</span><small>${r.pending_changes} changes</small>`,
                   link("Open billing", `billing/${r.id}`),
                 ]),
@@ -552,7 +619,12 @@ export async function renderApplication(c, id) {
 }
 export async function billingAction(c, name, id) {
   const b = c.data.billing;
-  const done = async (path, data, method = "POST", message = "Billing record saved") => {
+  const done = async (
+    path,
+    data,
+    method = "POST",
+    message = "Billing record saved",
+  ) => {
     await write(path, data, method);
     toast(message);
     await c.reload();
@@ -583,7 +655,9 @@ export async function billingAction(c, name, id) {
           request_key,
         });
         if (!funding.checkout_url)
-          throw new Error("Checkout could not be opened. Refresh and try again.");
+          throw new Error(
+            "Checkout could not be opened. Refresh and try again.",
+          );
         redirect(funding.checkout_url);
         return false;
       },
@@ -591,14 +665,26 @@ export async function billingAction(c, name, id) {
     );
   }
   if (name === "billing-sign-waiver") {
-    const w = (c.data.waivers || []).find((x) => x.id === id) ||
+    const w =
+      (c.data.waivers || []).find((x) => x.id === id) ||
       (await api(`/waivers/${id}`)).waiver;
     return modal(
       "Sign lien waiver",
       `<p class="eyebrow">LW-${number(w.id)} · ${esc(w.snapshot.title)} · ${usd(w.amount)}</p><div class="waiver-text">${w.snapshot.text.map((p) => `<p>${esc(p)}</p>`).join("")}</div>` +
-        field("Your full name", "signer_name", "text", c.user.full_name, 'required minlength="2" maxlength="120" autocomplete="name"') +
+        field(
+          "Your full name",
+          "signer_name",
+          "text",
+          c.user.full_name,
+          'required minlength="2" maxlength="120" autocomplete="name"',
+        ) +
         field("Title or role", "signer_title", "text", "", 'maxlength="120"') +
-        textarea("Exceptions (optional)", "exceptions", "", 'maxlength="4000"') +
+        textarea(
+          "Exceptions (optional)",
+          "exceptions",
+          "",
+          'maxlength="4000"',
+        ) +
         `<label class="confirm-check"><input type="checkbox" name="confirm" required> I am authorized to sign for ${esc(w.snapshot.claimant)}${w.conditional ? "" : ", and this payment has been received"}.</label>` +
         '<p class="hint">Your name, account, the time and a fingerprint of this exact text are recorded. A signed waiver cannot be changed.</p>',
       async (v) => {
@@ -615,7 +701,12 @@ export async function billingAction(c, name, id) {
     );
   }
   if (name === "billing-funding-refresh")
-    return done(`/fundings/${id}/refresh`, {}, "POST", "Funding status refreshed");
+    return done(
+      `/fundings/${id}/refresh`,
+      {},
+      "POST",
+      "Funding status refreshed",
+    );
   if (name === "billing-refund") {
     const funding = c.data.funding.fundings.find((x) => x.id === id);
     const request_key = crypto.randomUUID();
@@ -649,7 +740,8 @@ export async function billingAction(c, name, id) {
     const request_key = crypto.randomUUID();
     if (
       !c.data.waivers.some(
-        (w) => w.application_id === id && w.conditional && w.status === "signed",
+        (w) =>
+          w.application_id === id && w.conditional && w.status === "signed",
       )
     )
       return modal(
@@ -697,7 +789,12 @@ export async function billingAction(c, name, id) {
     return redirect(result.url);
   }
   if (name === "billing-account-refresh")
-    return done(`/payment-accounts/${id}/refresh`, {}, "POST", "Payout status refreshed");
+    return done(
+      `/payment-accounts/${id}/refresh`,
+      {},
+      "POST",
+      "Payout status refreshed",
+    );
   if (name === "billing-payout") {
     const account = c.data.accounts.find((a) => a.id === id);
     const request_key = crypto.randomUUID();

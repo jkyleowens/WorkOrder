@@ -84,6 +84,7 @@ async function logTime(page, assignment, hours) {
   await page
     .getByLabel("Project / assignment", { exact: true })
     .selectOption({ label: assignment });
+  await page.getByLabel("Entry type").selectOption("duration");
   await page.getByLabel("Hours", { exact: true }).fill(String(hours));
   await page.getByRole("button", { name: "Save time entries" }).click();
   await expect(page.locator("#main")).toHaveAttribute("aria-busy", "false");

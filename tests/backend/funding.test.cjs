@@ -504,6 +504,16 @@ test("payout accounts are owner-managed, payouts check the connected balance and
   [listed] = await funding().accounts(w.worker.id);
   assert.equal(listed.payouts[0].status, "paid");
   assert.equal(listed.oldest_unpaid_release_at, null);
+  await deliver("payout.failed", { id: payout.provider_payout_id, status: "failed", failure_message: "Bank returned payment" }, { account: row.provider_account_id });
+  [listed] = await funding().accounts(w.worker.id);
+  assert.equal(listed.payouts[0].status, "failed");
+  assert.equal(listed.aging.remaining, "95.00");
+  assert.ok(listed.oldest_unpaid_release_at);
+  await t.reject(() => funding().holdingReport(w.worker.id), 403);
+  await t.database.models.User.update({ platform_role: "admin" }, { where: { id: w.client.id } });
+  const holding = await funding().holdingReport(w.client.id);
+  assert.equal(holding.find(a => a.id === account.id).remaining, "95.00");
+
 });
 test("funding HTTP routes require CSRF and authentication", async () => {
   const agent = request.agent(t.runtime.app);

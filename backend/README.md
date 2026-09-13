@@ -92,8 +92,8 @@ All routes below require authentication. CSRF headers are required for POST, PUT
 | POST `/inventory/:id/receipts`                                | Owner/manager: `{quantity,reason,unit_cost?}`                                                                          |
 | GET `/inventory/:id/movements`                                | Owner/manager: stock ledger                                                                                            |
 | POST `/subdivisions/:id/materials`                            | Awarded worker/member: `{item_id,qty}`                                                                                 |
-| POST `/time`                                                  | `{subdivision_id,hours,date,note?,org_id?}`; org inferred from award                                                   |
-| PATCH `/time/:id`                                             | Author: any of `{hours,date,note}`; rate/assignment immutable                                                          |
+| POST `/time`                                                  | `{subdivision_id,date,start_time,end_time,note?,org_id?}` or legacy `hours`; org inferred from award                                                   |
+| PATCH `/time/:id`                                             | Author: `{start_time?,end_time?,hours?,date?,note?}`; clock edits derive hours; rate/assignment immutable                                                          |
 | DELETE `/time/:id`                                            | Author; executable work only                                                                                           |
 | GET `/time/entries?from=YYYY-MM-DD&to=YYYY-MM-DD`             | Own individual entries with IDs for editing                                                                            |
 | GET `/time?from=...&to=...`                                   | Own hours, labor cost, and grouped date/subdivision entries                                                            |
@@ -126,3 +126,9 @@ Backend tests launch an isolated real PostgreSQL 18 instance using `embedded-pos
 ## Frontend read models
 
 The console uses paginated `GET /api/me/jobs` for personal hiring history and `GET /api/organizations/:id/jobs` for organization hiring history (manager permission required). Both include closed postings. Job board rows include public poster/organization names; applications include posting or applicant details; bids include public bidder names and subdivision/project details; assignments include project and awarded organization details; roster rows include public user details. Nested public profiles exclude email and password hashes.
+
+### Clock times and payout holding
+
+`POST /api/time/bulk` accepts `{subdivision_id, entries}` with 1–31 entries. Each entry has a work date, optional note, and either `start_time` / `end_time` (`HH:mm`) or duration-only `hours`. A midnight end (`00:00` or `24:00`) means the end of the work date. Other end times must follow the start on that date; split overnight work into dated rows. Times are local wall-clock values, not timezone-aware timestamps. Saved hours are rounded to two decimals. Migration 010 leaves historical times null; no midnight starts are invented.
+
+`GET /api/admin/payout-holding` requires a platform administrator and returns oldest-first release amounts, deadlines and reconciliation exceptions. Payment-account responses also include `aging`. This derives conservative FIFO attribution from complete WorkOrder payout history, including partial payments and bank returns. It does not replace reconciliation of Stripe fees, transfers and payouts performed outside WorkOrder, or automatically enforce deadlines.

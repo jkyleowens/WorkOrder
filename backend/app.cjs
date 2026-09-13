@@ -604,6 +604,7 @@ function createApp(
     service.orgDashboard(req.user.id, param(req), req.query),
   );
   const origin = (req) => `${req.protocol}://${req.get("host")}`;
+  send("get", "/admin/payout-holding", (req) => funding.holdingReport(req.user.id));
   send("get", "/payment-accounts", async (req) => ({
     configured: funding.configured,
     live: !!paymentProvider?.live,

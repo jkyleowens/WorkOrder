@@ -45,9 +45,11 @@ The repository contains the Connect adapter, funding migration and ledger, hoste
 
 Automated funding tests use a deterministic provider with Stripe-signed webhook payloads. They cover authorization, asynchronous funding, duplicate/out-of-order events, concurrent releases, retries, refunds, disputes, waiver gates, and payout outcomes. They do not establish that a real Stripe test account has completed onboarding, collection and bank payout.
 
-The current implementation assumes US / USD and Express connected accounts with separate charges and transfers. Live keys remain disabled by default. Launch country/configuration confirmation and a real Stripe sandbox walkthrough remain outstanding. Settlement now persists the resolution and its required evidence packet atomically, fixing a database constraint failure found by the existing dispute tests.
+The user confirmed US / USD and Express connected accounts. The integration uses separate charges and transfers; live keys remain disabled by default. A real Stripe sandbox walkthrough remains outstanding; the local environment does not have Stripe keys or APP_URL configured. Settlement now persists the resolution and its required evidence packet atomically, fixing a database constraint failure found by the existing dispute tests.
 
-The holding-date display is advisory; pooled balances and partial payouts still need a reconciled age ledger before it can reliably enforce deadlines.
+Payout aging now reads the complete recorded release/payout history and attributes paid bank payouts to the oldest eligible releases. Partial payouts preserve the original deadline of remaining funds; pending, failed and canceled payouts do not clear it. A payout returned by the bank after being reported paid restores the unpaid amount. Excess payouts never clear future releases, and reversals of already-paid funds are flagged for reconciliation. The Billing administration view lists remaining amounts and country-specific deadlines, including due-soon and overdue funds.
+
+This is conservative attribution from WorkOrder records, not a reconciliation of every Stripe balance transaction. Fees, activity performed directly in Stripe, and ambiguous reversal timing still require reconciliation. It does not automatically pay out or enforce holding deadlines. Country holding periods follow [Stripe's manual payout documentation](https://docs.stripe.com/connect/manual-payouts), rechecked for this change.
 
 Implementation sequence:
 
@@ -62,19 +64,19 @@ Stripe's current documentation (checked September 13, 2026): [manual payouts](ht
 
 ## Integrated time entry
 
-Time & reports now includes an inline assignment form for up to 31 dates and durations per submission. Project and overview shortcuts open this workspace. The server saves the batch atomically, snapshots the applicable pay rate, attributes organization work automatically, and checks combined daily hours across all assignments under a user lock. Failed batches preserve entered values; successful batches refresh the grid, totals and entries. The grid continues to display durations, not recorded start/end timestamps.
+Time & reports includes an inline assignment form for up to 31 dated start/end intervals per submission, with an explicit hours-only option when clock times are unknown. Project and overview shortcuts open this workspace. The server saves the batch atomically, snapshots the applicable pay rate, attributes organization work automatically, and checks combined daily hours across all assignments under a user lock. Failed batches preserve entered values; successful batches refresh the grid, totals and entries. Migration `010-timesheet-clock-times.sql` preserves nullable clock times, with database validation that the derived duration matches hours. The grid positions and sizes blocks from saved times, opens near the first recorded start, and places overlapping entries in separate columns. Legacy hours-only entries are listed separately rather than assigned a fictitious midnight start. Editing can add clock times to legacy entries or correct existing intervals. Times are wall-clock values on the entered work date; an end time of 00:00 means the end of that day. Overnight work uses separate rows for each date. Payroll hours remain rounded to hundredths, while grid placement uses the exact entered minutes.
 
 ## Remaining roadmap
 
-| Objective                        | State after increment 1                                                          |
+| Objective                        | Current state                                                                    |
 | -------------------------------- | -------------------------------------------------------------------------------- |
-| Scope funding / release ledger   | Connect implemented and reconnected; real sandbox verification pending                                        |
+| Scope funding / release ledger   | Connect implemented and reconnected; real sandbox verification pending           |
 | Progress billing / retainage     | Cost-based records implemented; Stripe settlement and fixed-price billing remain |
 | Change orders                    | Price and schedule deltas, acceptance and history implemented                    |
-| Lien waivers                     | Not implemented                                                                  |
-| License / insurance verification | Not implemented                                                                  |
-| Completed-work reputation        | Not implemented                                                                  |
-| Disputes / evidence packets      | Not implemented                                                                  |
+| Lien waivers                     | Implemented; signature and payment-state tests pass                              |
+| License / insurance verification | Implemented; credential model restored and tests pass                            |
+| Completed-work reputation        | Implemented; completed-scope review tests pass                                   |
+| Disputes / evidence packets      | Implemented; settlement and evidence-packet tests pass                           |
 | Offline crew time clock          | Not implemented; existing interactive time grid retained                         |
 | Photo daily reports              | Not implemented                                                                  |
 | Documents / signatures           | Application print/export only; document storage and signatures remain            |
