@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#174c3c">
+  <title><%= title %></title>
+  <link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div id="app"><main id="main" class="boot" aria-busy="true"><span class="brand">WorkOrder<span>®</span></span><p>Opening your workspace…</p></main></div>
+  <dialog id="modal" aria-labelledby="dialog-title"></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript><p>WorkOrder needs JavaScript to securely sign in and save your work. Enable JavaScript and reload this page.</p></noscript>
+  <script type="module" src="/assets/app.js"></script>
+</body>
+</html>

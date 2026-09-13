@@ -1,0 +1,46 @@
+{
+  "name": "workorder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A desktop workspace for teams, materials and projects",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "node server.cjs",
+    "test": "node --test tests/*.test.cjs tests/backend/*.test.cjs",
+    "test:ui": "playwright test",
+    "api": "node --env-file=.env backend/start.cjs",
+    "db:migrate": "node --env-file=.env backend/start.cjs --migrate",
+    "test:backend": "node --test tests/backend/*.test.cjs",
+    "test:console": "playwright test --config=playwright.console.config.cjs",
+    "web": "node --env-file=.env backend/start.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "electron": "^44.2.0",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "prettier": "^3.9.6",
+    "supertest": "^7.2.2"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "connect-pg-simple": "^10.0.0",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "pg": "^8.23.0",
+    "sequelize": "^6.37.8",
+    "zod": "^4.6.2"
+  },
+  "overrides": {
+    "sequelize": {
+      "uuid": "11.1.1"
+    }
+  }
+}
