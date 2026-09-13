@@ -78,6 +78,51 @@ class PlatformService {
       return org;
     });
   }
+  async editOrg(user, id, input) {
+    const data = schemas.organization.parse(input);
+    return this.db.transaction(async (t) => {
+      const org = await this.get("Organization", id, t, true);
+      await this.member(user, id, t, true);
+      return org.update(data, { transaction: t });
+    });
+  }
+  async canCommission(user, p, s, t) {
+    if (p.client_user_id === user) return;
+    check(
+      s.parent_subdivision_id,
+      403,
+      "Only the client can commission root work",
+    );
+    const parent = await this.get(
+      "ProjectSubdivision",
+      s.parent_subdivision_id,
+      t,
+    );
+    await this.performer(user, parent, t, true);
+  }
+  async addChild(user, id, input) {
+    const { scopes } = schemas.subdivision.parse(input);
+    return this.db.transaction(async (t) => {
+      const { p, s } = await this.work(id, t);
+      check(["open", "active"].includes(p.status));
+      check(["open", "awarded", "active"].includes(s.status));
+      if (p.client_user_id !== user) await this.performer(user, s, t, true);
+      const sequence = await this.m.ProjectSubdivision.max("sequence", {
+        where: { project_id: p.id },
+        transaction: t,
+      });
+      return this.m.ProjectSubdivision.bulkCreate(
+        scopes.map((scope, i) => ({
+          project_id: p.id,
+          parent_subdivision_id: s.id,
+          scope,
+          sequence: sequence + i + 1,
+          status: "open",
+        })),
+        { transaction: t },
+      );
+    });
+  }
   async setMember(user, org, input) {
     const d = schemas.member.parse(input);
     return this.db.transaction(async (t) => {
@@ -230,6 +275,14 @@ class PlatformService {
       ...project.get({ plain: true }),
       subdivisions: await this.m.ProjectSubdivision.findAll({
         where: { project_id: id },
+        include: [
+          {
+            model: this.m.User,
+            as: "awardedUser",
+            attributes: ["id", "full_name"],
+          },
+          { model: this.m.Organization, as: "awardedOrganization" },
+        ],
         order: [["sequence", "ASC"]],
         transaction: t,
       }),
@@ -284,6 +337,27 @@ class PlatformService {
       const { p, s } = await this.work(id, t);
       check(p.client_user_id !== user, 403, "Cannot bid on your own project");
       check(p.status !== "cancelled" && s.status === "open");
+      if (s.parent_subdivision_id) {
+        const parent = await this.get(
+          "ProjectSubdivision",
+          s.parent_subdivision_id,
+          t,
+        );
+        check(["open", "awarded", "active"].includes(parent.status));
+        check(
+          parent.awarded_user_id !== user &&
+            (!org_id || parent.awarded_org_id !== org_id),
+          403,
+          "Cannot bid on work you are subcontracting",
+        );
+        if (parent.awarded_org_id) {
+          const membership = await this.m.OrganizationMember.findOne({
+            where: { user_id: user, org_id: parent.awarded_org_id },
+            transaction: t,
+          });
+          check(!membership?.canManage(), 403, "Cannot bid on work you manage");
+        }
+      }
       if (org_id) {
         await this.member(user, org_id, t, true);
         check(
@@ -323,7 +397,7 @@ class PlatformService {
     return this.db.transaction(async (t) => {
       const initial = await this.get("Bid", id, t);
       const { p, s } = await this.work(initial.subdivision_id, t);
-      check(p.client_user_id === user, 403, "Only the client can award");
+      await this.canCommission(user, p, s, t);
       const b = await this.get("Bid", id, t, true);
       check(s.status === "open" && b.status === "pending");
       await this.m.Bid.update(
@@ -367,6 +441,18 @@ class PlatformService {
           ? s.status === "awarded"
           : ["awarded", "active"].includes(s.status),
       );
+      if (status === "completed")
+        check(
+          !(await this.m.ProjectSubdivision.count({
+            where: {
+              parent_subdivision_id: s.id,
+              status: { [Op.ne]: "completed" },
+            },
+            transaction: t,
+          })),
+          409,
+          "Complete all child work before completing this scope",
+        );
       await s.update({ status }, { transaction: t });
       if (
         !(await this.m.ProjectSubdivision.count({

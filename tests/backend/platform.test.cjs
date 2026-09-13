@@ -82,7 +82,7 @@ test("versioned migrations are repeatable and model associations resolve", async
   const [rows] = await database.db.query(
     "SELECT count(*)::int AS n FROM schema_migrations",
   );
-  assert.equal(rows[0].n, 2);
+  assert.equal(rows[0].n, 3);
   const u = await user(),
     o = await s.createOrg(u.id, { name: "Builder" });
   assert.equal((await o.getCreator()).id, u.id);
@@ -812,4 +812,58 @@ test("console read models include safe names, closed hiring history and scoped a
     .expect("Content-Type", /html/);
   await request(runtime.app).get("/assets/app.js").expect(200);
   await request(runtime.app).get("/assets/../../.env").expect(404);
+});
+
+test("nested contractors commission children and cannot finish unfinished branches", async () => {
+  const client = await user(),
+    contractor = await user(),
+    sub = await user(),
+    outsider = await user();
+  const p = await s.postProject(client.id, { title: "Nested delivery" });
+  const root = p.subdivisions[0];
+  const bid = await s.submitBid(contractor.id, root.id, { amount: 1000 });
+  await s.award(client.id, bid.id);
+  const [child] = await s.addChild(contractor.id, root.id, {
+    scopes: ["Specialist work"],
+  });
+  await reject(
+    () => s.addChild(outsider.id, child.id, { scopes: ["Unauthorized"] }),
+    403,
+  );
+  await reject(() => s.submitBid(contractor.id, child.id, { amount: 50 }), 403);
+  const childBid = await s.submitBid(sub.id, child.id, { amount: 500 });
+  await reject(() => s.award(outsider.id, childBid.id), 403);
+  await s.award(contractor.id, childBid.id);
+  const [grandchild] = await s.addChild(sub.id, child.id, {
+    scopes: ["Finishing"],
+  });
+  const finishBid = await s.submitBid(outsider.id, grandchild.id, {
+    amount: 100,
+  });
+  await s.award(sub.id, finishBid.id);
+  await reject(
+    () => s.subdivisionStatus(contractor.id, root.id, { status: "completed" }),
+    409,
+  );
+  await s.subdivisionStatus(outsider.id, grandchild.id, {
+    status: "completed",
+  });
+  await s.subdivisionStatus(sub.id, child.id, { status: "completed" });
+  await s.subdivisionStatus(contractor.id, root.id, { status: "completed" });
+  assert.equal((await s.projectDetail(p.id)).status, "completed");
+});
+
+test("organization settings require management membership", async () => {
+  const owner = await user(),
+    outsider = await user();
+  const org = await s.createOrg(owner.id, { name: "Original" });
+  await reject(
+    () => s.editOrg(outsider.id, org.id, { name: "Forbidden" }),
+    403,
+  );
+  await s.editOrg(owner.id, org.id, {
+    name: "Updated",
+    trade_focus: "Construction",
+  });
+  assert.equal((await s.get("Organization", org.id)).name, "Updated");
 });

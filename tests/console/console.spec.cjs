@@ -29,11 +29,13 @@ async function confirm(page, trigger, confirmation = trigger) {
   await page.getByRole("button", { name: trigger, exact: true }).click();
   await submit(page, confirmation);
 }
-async function context(page, value) {
-  await page.getByLabel("Your context").selectOption({ label: value });
-  await expect(
-    page.getByRole("heading", { name: value, exact: true }),
-  ).toBeVisible();
+async function organization(page, destination) {
+  await nav(page, "Organizations");
+  await page
+    .getByRole("link", { name: "View organization", exact: true })
+    .click();
+  if (destination)
+    await page.getByRole("link", { name: destination, exact: true }).click();
 }
 async function createProject(page, title, scopes) {
   await nav(page, "Projects");
@@ -104,7 +106,11 @@ test("registration, validation, profile persistence, logout and login", async ({
   await page.reload();
   await expect(page.getByText("42.50 / hour")).toBeVisible();
   await expect(page.getByText("Paving", { exact: true })).toBeVisible();
-  await confirm(page, "Sign out");
+  await page
+    .locator("#main")
+    .getByRole("button", { name: "Sign out", exact: true })
+    .click();
+  await submit(page, "Sign out");
   await expect(
     page.getByRole("heading", { name: "Welcome back", exact: true }),
   ).toBeVisible();
@@ -152,12 +158,22 @@ test("three users hire, award mixed work, record resources, and verify live roll
     await owner.getByLabel("Organization name").fill("Acme Builders");
     await owner.getByLabel("Trade or focus").fill("Construction");
     await submit(owner, "Create organization");
-    await context(owner, "Acme Builders");
+    await organization(owner);
+    await expect(
+      owner.getByRole("button", { name: "Edit organization" }),
+    ).toBeVisible();
+    await owner.getByRole("button", { name: "Edit organization" }).click();
+    await owner.getByLabel("Trade or focus").fill("Construction & site work");
+    await submit(owner, "Save changes");
+    await expect(owner.locator(".page-heading")).toContainText(
+      "Construction & site work",
+    );
     await nav(owner, "Employment");
     await owner
       .getByRole("button", { name: "Post a job", exact: true })
       .first()
       .click();
+    await owner.getByLabel("Act as").selectOption({ label: "Acme Builders" });
     await owner.getByLabel("Job title").fill("Paving specialist");
     await owner
       .getByLabel("Description", { exact: true })
@@ -195,6 +211,7 @@ test("three users hire, award mixed work, record resources, and verify live roll
       has: owner.getByRole("heading", { name: "Paving", exact: true }),
     });
     await paving.getByRole("button", { name: "Submit a bid" }).click();
+    await owner.getByLabel("Act as").selectOption({ label: "Acme Builders" });
     await owner.getByLabel("Bid amount").fill("1200");
     await submit(owner, "Submit bid");
     await project(worker, "Driveway renovation");
@@ -222,7 +239,7 @@ test("three users hire, award mixed work, record resources, and verify live roll
     await expect(
       worker.locator(".stat").filter({ hasText: "Total hours" }),
     ).toContainText("6.00");
-    await nav(owner, "Inventory");
+    await organization(owner, "Shared inventory");
     await owner
       .getByRole("button", { name: "Add inventory", exact: true })
       .first()
@@ -242,7 +259,7 @@ test("three users hire, award mixed work, record resources, and verify live roll
     await paving.getByRole("button", { name: "Use materials" }).click();
     await worker.getByLabel("Quantity to use").fill("7");
     await submit(worker, "Record usage");
-    await nav(owner, "Time & reports");
+    await organization(owner, "Team reports");
     await expect(
       owner.locator(".stat").filter({ hasText: "Total hours" }),
     ).toContainText("4.00");
@@ -257,7 +274,7 @@ test("three users hire, award mixed work, record resources, and verify live roll
       path: "test-results/console-desktop.png",
       fullPage: true,
     });
-    await nav(owner, "Inventory");
+    await organization(owner, "Shared inventory");
     await expect(
       owner.getByRole("row").filter({ hasText: "Paving stone" }),
     ).toContainText("18");
@@ -333,4 +350,37 @@ test("mobile console, empty states and safe rendering of profile text", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test("project work breakdown supports nested scopes without switching workspaces", async ({
+  page,
+}) => {
+  await register(page, "Project Planner", "planner@example.com");
+  await expect(page.getByLabel("Your context")).toHaveCount(0);
+  await createProject(page, "Workshop build", "Structure");
+  await page
+    .getByRole("button", { name: "Add child scopes", exact: true })
+    .click();
+  await page.getByLabel("Scopes (one per line)").fill("Roofing");
+  await submit(page, "Save changes");
+  const child = page
+    .locator(".subdivision")
+    .filter({
+      has: page.getByRole("heading", { name: "Roofing", exact: true }),
+    });
+  await expect(child).toContainText("Scope 1.1");
+  await child.getByRole("button", { name: "Add child scopes" }).click();
+  await page.getByLabel("Scopes (one per line)").fill("Flashing");
+  await submit(page, "Save changes");
+  await expect(
+    page
+      .locator(".subdivision")
+      .filter({
+        has: page.getByRole("heading", { name: "Flashing", exact: true }),
+      }),
+  ).toContainText("Scope 1.1.1");
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Flashing", exact: true }),
+  ).toBeVisible();
 });

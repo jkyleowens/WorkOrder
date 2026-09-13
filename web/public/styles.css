@@ -1574,3 +1574,25 @@ dialog form {
     width: 165px;
   }
 }
+
+/* Project work breakdown */
+.child-scope {
+  margin-left: clamp(16px, 4vw, 48px);
+  border-left: 3px solid var(--accent, #d3e794);
+}
+.project-progress {
+  width: 100%;
+  height: 12px;
+  accent-color: #597744;
+}
+.subdivision h2 {
+  overflow-wrap: anywhere;
+}
+.subdivision .panel-heading {
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .child-scope {
+    margin-left: 12px;
+  }
+}

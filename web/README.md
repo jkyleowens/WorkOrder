@@ -64,3 +64,19 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:console
 The suite launches the actual application and an isolated PostgreSQL instance, then drives real browser interactions. It never uses the configured application database. Test credentials and data are temporary. Local socket access and a non-root user are required by embedded PostgreSQL.
 
 The tests cover authentication and profile persistence, a three-account hiring/bidding/execution workflow, organization and client cost visibility, mobile layout, and escaped user content. Screenshots and failure traces are written to `test-results/`.
+
+The console now uses one workspace without a context switcher. Choose the acting
+organization inside bidding and hiring forms. Organization pages provide direct
+links to their inventory, assignments, bids, hiring and reports. Owners and
+managers (the existing administrative role) can edit organization details; roster
+role changes remain owner-only. The legacy context API remains compatible with
+older clients but no longer controls the web console.
+
+Projects display a numbered work breakdown with nested scopes, contractor names
+and completion progress. Clients can add child scopes; awarded contractors and
+organization managers can subcontract their own active scopes. The immediate
+parent contractor or project client reviews and awards child bids. Children can
+be subcontracted again, and every child must finish before its parent can finish.
+Costs remain recorded against the individual work package where they occur.
+Migration `003-nested-work.sql` adds the parent relationship without changing
+existing work. The Vercel entry point applies migrations during startup.

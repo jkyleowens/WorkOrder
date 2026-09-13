@@ -24,7 +24,6 @@ const week = () => {
 };
 const c = {
   user: null,
-  context: { mode: "personal" },
   memberships: [],
   data: {},
   range: week(),
@@ -71,7 +70,6 @@ function auth(register = location.pathname === "/register", message = "") {
         data,
       );
       c.user = result.user;
-      c.context = result.context;
       history.replaceState(null, "", "/console#overview");
       await c.reload();
     } catch (e) {
@@ -102,33 +100,7 @@ function shell(route) {
         : route === "organization"
           ? "organizations"
           : route;
-  root.innerHTML = `<div class="console"><aside class="sidebar">${brand}<label class="context-label">Your context<select id="context" aria-label="Your context"><option value="personal" ${c.context.mode === "personal" ? "selected" : ""}>Personal workspace</option><option value="client" ${c.context.mode === "client" ? "selected" : ""}>Client workspace</option>${c.memberships
-    .filter((m) => c.manages(m.org_id))
-    .map(
-      (m) =>
-        `<option value="${m.org_id}" ${c.org?.id === m.org_id ? "selected" : ""}>${esc(m.organization.name)}</option>`,
-    )
-    .join(
-      "",
-    )}</select></label><p class="nav-caption">WORKSPACE</p><nav aria-label="Main navigation">${navigation.map(([key, label, i]) => `<a href="#${key}" aria-label="${label}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${selected === key ? '<span class="nav-dot"></span>' : ""}</a>`).join("")}</nav><div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(navigation.find(([key]) => key === selected)?.[1] || "Overview")}</span><div class="topbar-right"><span class="context-pill"><i></i>${esc(c.org?.name || (c.context.mode === "client" ? "Client context" : "Personal context"))}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div></div>`;
-  document.querySelector("#context").onchange = async (e) => {
-    const value = e.target.value;
-    e.target.disabled = true;
-    try {
-      await write(
-        "/context",
-        isNaN(Number(value))
-          ? { mode: value }
-          : { mode: "organization", org_id: Number(value) },
-        "PUT",
-      );
-      toast("Context updated");
-      c.navigate("overview");
-    } catch (error) {
-      toast(error.message);
-      await c.reload();
-    }
-  };
+  root.innerHTML = `<div class="console"><aside class="sidebar">${brand}<p class="nav-caption">WORKSPACE</p><nav aria-label="Main navigation">${navigation.map(([key, label, i]) => `<a href="#${key}" aria-label="${label}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${selected === key ? '<span class="nav-dot"></span>' : ""}</a>`).join("")}</nav><div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(navigation.find(([key]) => key === selected)?.[1] || "Overview")}</span><div class="topbar-right"><span class="context-pill"><i></i>${esc(c.org?.name || "Connected workspace")}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div></div>`;
 }
 c.reload = async () => {
   const current = ++generation;
@@ -150,12 +122,17 @@ c.reload = async () => {
     const memberships = await all("/organizations");
     if (current !== generation) return;
     c.user = me.user;
-    c.context = me.context;
     c.memberships = memberships;
-    c.org =
-      c.context.mode === "organization"
-        ? memberships.find((m) => m.org_id === c.context.org_id)?.organization
-        : null;
+    c.org = [
+      "organization",
+      "inventory",
+      "time",
+      "org-projects",
+      "org-bids",
+      "org-jobs",
+    ].includes(route)
+      ? memberships.find((m) => m.org_id === Number(part))?.organization || null
+      : null;
     shell(route);
     c.currentWeek = week();
     const view = { ...c };

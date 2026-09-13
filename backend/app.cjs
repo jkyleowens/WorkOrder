@@ -239,6 +239,15 @@ function createApp(
       order: [["id", "ASC"]],
     });
   });
+  send("patch", "/organizations/:id", (req) =>
+    service.editOrg(req.user.id, param(req), req.body),
+  );
+  send(
+    "post",
+    "/subdivisions/:id/children",
+    (req) => service.addChild(req.user.id, param(req), req.body),
+    201,
+  );
   send("put", "/organizations/:id/members", (req) =>
     service.setMember(req.user.id, param(req), req.body),
   );
@@ -347,11 +356,7 @@ function createApp(
   send("get", "/subdivisions/:id/bids", async (req) => {
     const s = await service.get("ProjectSubdivision", param(req));
     const p = await service.get("Project", s.project_id);
-    check(
-      p.client_user_id === req.user.id,
-      403,
-      "Only the client can review competing bids",
-    );
+    await service.canCommission(req.user.id, p, s);
     return m.Bid.findAll({
       where: { subdivision_id: s.id },
       include: bidIncludes,

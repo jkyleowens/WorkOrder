@@ -59,6 +59,7 @@ const definitions = {
     "project_subdivisions",
     {
       project_id: D.INTEGER,
+      parent_subdivision_id: D.INTEGER,
       awarded_user_id: D.INTEGER,
       awarded_org_id: D.INTEGER,
       scope: D.TEXT,

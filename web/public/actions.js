@@ -125,11 +125,51 @@ export async function action(c, name, id) {
       (v) => done(() => write("/organizations", v), "Organization created"),
       "Create organization",
     );
-  if (name === "switch-org") {
-    await write("/context", { mode: "organization", org_id: id }, "PUT");
-    c.navigate("overview");
-    return;
-  }
+  if (name === "edit-organization")
+    return modal(
+      "Organization settings",
+      field(
+        "Organization name",
+        "name",
+        "text",
+        d.organization.name,
+        'required maxlength="160"',
+      ) +
+        field(
+          "Trade or focus",
+          "trade_focus",
+          "text",
+          d.organization.trade_focus,
+          'maxlength="160"',
+        ),
+      (v) =>
+        done(
+          () => write(`/organizations/${d.organization.id}`, v, "PATCH"),
+          "Organization updated",
+        ),
+    );
+  if (name === "add-child")
+    return modal(
+      "Add child scopes",
+      textarea(
+        "Scopes (one per line)",
+        "scopes",
+        "",
+        'required maxlength="20000"',
+      ) +
+        '<p class="hint">Each scope accepts its own bids. Awarded contractors can delegate further. Complete child scopes before closing their parent.</p>',
+      (v) =>
+        done(
+          () =>
+            write(`/subdivisions/${id}/children`, {
+              scopes: v.scopes
+                .split("\n")
+                .map((s) => s.trim())
+                .filter(Boolean),
+            }),
+          "Child scopes added",
+        ),
+    );
   if (name === "member-role") {
     const member = d.members.find((m) => m.user_id === id);
     return modal(

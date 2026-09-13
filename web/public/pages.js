@@ -47,7 +47,7 @@ export async function renderPage(c, route, part, page = 0) {
             : `/time/week?date=${today()}`,
         ),
       ]);
-    const clientMode = c.context.mode === "client";
+    const clientMode = false;
     const work = clientMode
       ? projects
           .filter((p) => ["open", "active"].includes(p.status))
@@ -158,14 +158,34 @@ export async function renderPage(c, route, part, page = 0) {
       pager("people", page, d.people.length)
     );
   }
+  if (route === "org-bids") {
+    route = "projects";
+    part = "bids";
+  }
+  if (route === "org-projects") {
+    route = "projects";
+    part = "work";
+  }
+  if (route === "org-jobs") {
+    route = "jobs";
+    part = "hiring";
+  }
   if (route === "projects") {
     const view = ["mine", "work", "bids"].includes(part) ? part : "market";
     const nav = tabs(
       [
         ["market", "Project market", "projects"],
         ["mine", "My client projects", "projects/mine"],
-        ["work", "My assignments", "projects/work"],
-        ["bids", c.org ? "Organization bids" : "My bids", "projects/bids"],
+        [
+          "work",
+          c.org ? "Organization assignments" : "My assignments",
+          c.org ? `org-projects/${c.org.id}` : "projects/work",
+        ],
+        [
+          "bids",
+          c.org ? "Organization bids" : "My bids",
+          c.org ? `org-bids/${c.org.id}` : "projects/bids",
+        ],
       ],
       view,
     );
@@ -229,7 +249,13 @@ export async function renderPage(c, route, part, page = 0) {
       ) +
       nav +
       body +
-      pager(`projects/${view === "market" ? "" : view}`, page, d.rows.length)
+      pager(
+        c.org
+          ? `${view === "bids" ? "org-bids" : "org-projects"}/${c.org.id}`
+          : `projects/${view === "market" ? "" : view}`,
+        page,
+        d.rows.length,
+      )
     );
   }
   if (route === "project") {
@@ -237,18 +263,39 @@ export async function renderPage(c, route, part, page = 0) {
     const own = p.client_user_id === c.user.id;
     const me = await api(`/users/${p.client_user_id}`);
     const allAssignments = await all("/me/assignments");
+    const ordered = [];
+    const visit = (parent = null, depth = 0, prefix = "") => {
+      p.subdivisions
+        .filter((s) => (s.parent_subdivision_id || null) === parent)
+        .forEach((s, i) => {
+          s.outline = prefix + (i + 1);
+          s.depth = depth;
+          ordered.push(s);
+          visit(s.id, depth + 1, s.outline + ".");
+        });
+    };
+    visit();
     const subHtml = await Promise.all(
-      p.subdivisions.map(async (s) => {
+      ordered.map(async (s) => {
         const assigned = allAssignments.find((a) => a.id === s.id);
         const manager = s.awarded_org_id && c.manages(s.awarded_org_id);
         const canManage = own || s.awarded_user_id === c.user.id || manager;
-        const bids = own ? await all(`/subdivisions/${s.id}/bids`) : [];
+        const parent = p.subdivisions.find(
+          (a) => a.id === s.parent_subdivision_id,
+        );
+        const commission =
+          own ||
+          (parent &&
+            active(parent) &&
+            (parent.awarded_user_id === c.user.id ||
+              c.manages(parent.awarded_org_id)));
+        const bids = commission ? await all(`/subdivisions/${s.id}/bids`) : [];
         const cost =
           own || s.awarded_user_id === c.user.id || manager
             ? await api(`/subdivisions/${s.id}/costs`)
             : null;
-        return `<article class="panel subdivision" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Subdivision ${s.sequence}</span><h2>${esc(s.scope)}</h2></div>${status(s.status)}</div><div class="actions">${s.status === "open" && !own ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${
-          own
+        return `<article class="panel subdivision ${s.depth ? "child-scope" : ""}" id="scope-${s.id}" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Scope ${s.outline} · ${esc(s.awardedOrganization?.name || s.awardedUser?.full_name || "Awaiting contractor")}</span><h2>${esc(s.scope)}</h2>${parent ? `<a class="muted" href="#project/${p.id}">↳ ${esc(parent.scope)}</a>` : ""}</div>${status(s.status)}</div><div class="actions">${canManage && ["open", "awarded", "active"].includes(s.status) ? button("Add child scopes", "add-child", s.id) : ""}${s.status === "open" && !commission ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${
+          commission
             ? `<h3>Bids ${bids.length ? `(${bids.length})` : ""}</h3>${
                 bids.length
                   ? table(
@@ -279,6 +326,28 @@ export async function renderPage(c, route, part, page = 0) {
         status(p.status),
       ) +
       `<div class="actions space-bottom">${own && p.status === "open" ? button("Edit subdivisions", "subdivide", p.id) + button("Cancel project", "cancel-project", p.id, "danger") : ""}</div>` +
+      stats([
+        ["Work packages", p.subdivisions.length, "Across all levels"],
+        [
+          "Open for bids",
+          p.subdivisions.filter((s) => s.status === "open").length,
+          "Ready for contractors",
+        ],
+        [
+          "In progress",
+          p.subdivisions.filter(active).length,
+          "Awarded and active",
+        ],
+        [
+          "Completed",
+          p.subdivisions.filter((s) => s.status === "completed").length,
+          "Delivered scopes",
+        ],
+      ]) +
+      panel(
+        "Delivery progress",
+        `<progress class="project-progress" max="${p.subdivisions.length || 1}" value="${p.subdivisions.filter((s) => s.status === "completed").length}" aria-label="Completed work packages"></progress><p class="muted">Expand your delivery plan with child scopes. Each package has its own contractor, bids and costs.</p>`,
+      ) +
       subHtml.join("")
     );
   }
@@ -351,7 +420,11 @@ export async function renderPage(c, route, part, page = 0) {
         view,
       ) +
       body +
-      pager(`jobs/${view === "board" ? "" : view}`, page, d.rows.length)
+      pager(
+        c.org ? `org-jobs/${c.org.id}` : `jobs/${view === "board" ? "" : view}`,
+        page,
+        d.rows.length,
+      )
     );
   }
   if (route === "job") {
@@ -411,7 +484,7 @@ export async function renderPage(c, route, part, page = 0) {
         button("Create organization", "organization", "", "primary"),
       ) +
       (c.memberships.length
-        ? `<div class="cards">${c.memberships.map((m) => `<article class="card"><div class="card-top"><span class="avatar">${initials(m.organization.name)}</span>${status(m.internal_role)}</div><h2>${esc(m.organization.name)}</h2><p>${esc(m.organization.trade_focus || "A shared place for your team and its work.")}</p><div class="card-footer">${link("View organization", `organization/${m.org_id}`)}${c.manages(m.org_id) ? button("Switch context", "switch-org", m.org_id) : ""}</div></article>`).join("")}</div>`
+        ? `<div class="cards">${c.memberships.map((m) => `<article class="card"><div class="card-top"><span class="avatar">${initials(m.organization.name)}</span>${status(m.internal_role)}</div><h2>${esc(m.organization.name)}</h2><p>${esc(m.organization.trade_focus || "A shared place for your team and its work.")}</p><div class="card-footer">${link("View organization", `organization/${m.org_id}`)}${c.manages(m.org_id) ? link("Control panel", `organization/${m.org_id}`) : ""}</div></article>`).join("")}</div>`
         : empty(
             "Start something together",
             "Create an organization to bid on projects, hire people, and share resources.",
@@ -423,6 +496,12 @@ export async function renderPage(c, route, part, page = 0) {
     if (!membership) throw new Error("You do not belong to this organization.");
     d.members = await all(`/organizations/${part}/members`);
     d.organization = membership.organization;
+    const manage = c.manages(Number(part));
+    const report = manage
+      ? await api(
+          `/organizations/${part}/dashboard?from=${c.currentWeek.from}&to=${c.currentWeek.to}`,
+        )
+      : null;
     return (
       '<a class="back" href="#organizations">← Organizations</a>' +
       heading(
@@ -431,9 +510,25 @@ export async function renderPage(c, route, part, page = 0) {
         membership.organization.trade_focus ||
           "People, skills, and shared work.",
         c.manages(Number(part))
-          ? button("Open organization console", "switch-org", part, "primary")
+          ? button("Edit organization", "edit-organization", part, "primary")
           : "",
       ) +
+      (manage
+        ? stats([
+            ["Team members", d.members.length, "Your organization"],
+            [
+              "Hours this week",
+              Number(report.hours).toFixed(2),
+              "Team timesheets",
+            ],
+            ["Labor cost", money(report.labor_cost), "This week"],
+            ["Material cost", money(report.material_cost), "This week"],
+          ]) +
+          panel(
+            "Organization control panel",
+            `<div class="actions">${button("Post a job", "job", "", "primary")}${link("Manage hiring", `org-jobs/${part}`)}${link("Assigned projects", `org-projects/${part}`)}${link("Organization bids", `org-bids/${part}`)}${link("Team reports", `time/${part}`)}${link("Shared inventory", `inventory/${part}`)}</div><p class="muted">Manage your organization’s profile, hiring, resources and project delivery from one place.</p>`,
+          )
+        : "") +
       panel(
         "Team roster",
         table(
@@ -451,7 +546,7 @@ export async function renderPage(c, route, part, page = 0) {
           ),
         ),
       ) +
-      `<div class="actions space-top">${link("View shared inventory", `inventory/${part}`)}${link("Find assigned work", "projects/work")}</div>`
+      `<div class="actions space-top">${link("View shared inventory", `inventory/${part}`)}${link("Find assigned work", `org-projects/${part}`)}</div>`
     );
   }
   if (route === "inventory") {
