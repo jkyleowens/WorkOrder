@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "A desktop workspace for teams, materials and projects",
-  "main": "server.cjs",
+  "main": "electron/main.cjs",
   "scripts": {
     "start": "electron .",
     "prototype": "node server.cjs",
