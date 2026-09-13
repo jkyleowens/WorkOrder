@@ -38,3 +38,4 @@ module.exports = async (req, res) => {
     res.end(JSON.stringify({ error: "Internal server error" }));
   }
 };
+module.exports.config = { maxDuration: 30 };

@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "framework": null,
-  "functions": {
-    "api/index.cjs": {
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index.cjs" }]
+  "builds": [{ "src": "api/index.cjs", "use": "@vercel/node" }],
+  "routes": [{ "src": "/(.*)", "dest": "/api/index.cjs" }]
 }
