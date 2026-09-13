@@ -731,7 +731,7 @@ class TrustService {
       amount_payer: amount(toPayer),
     }, t);
     const resolvedAt = new Date();
-    await dispute.update(
+    dispute.set(
       {
         status: "resolved",
         resolved_contractor: amount(toContractor),
@@ -742,10 +742,11 @@ class TrustService {
         resolved_at: resolvedAt,
         updated_at: resolvedAt,
       },
-      { transaction: t },
     );
     const packet = await this.assemble(dispute, t);
-    await dispute.update({ packet, packet_hash: hash(packet) }, { transaction: t });
+    dispute.set({ packet, packet_hash: hash(packet) });
+    // Persist resolution and its required evidence packet in the same statement.
+    await dispute.save({ transaction: t });
     const parties = await this.funding.scopeParties(s.id, t);
     await this.billing.notify(
       parties,

@@ -191,6 +191,30 @@ const schemas = {
     })
     .strict()
     .refine((d) => Object.keys(d).length > 0, "Provide a field to update"),
+  timeBulk: z
+    .object({
+      subdivision_id: id,
+      org_id: id.optional(),
+      entries: z
+        .array(
+          z
+            .object({
+              hours: z
+                .number()
+                .positive()
+                .max(24)
+                .refine(
+                  (n) => Math.abs(n * 100 - Math.round(n * 100)) < 0.0001,
+                ),
+              date,
+              note: z.string().max(2000).default(""),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(31),
+    })
+    .strict(),
   range: z
     .object({ from: date, to: date })
     .strict()

@@ -82,10 +82,12 @@ async function logTime(page, assignment, hours) {
     .first()
     .click();
   await page
-    .getByLabel("Assignment", { exact: true })
+    .getByLabel("Project / assignment", { exact: true })
     .selectOption({ label: assignment });
   await page.getByLabel("Hours", { exact: true }).fill(String(hours));
-  await submit(page, "Log time");
+  await page.getByRole("button", { name: "Save time entries" }).click();
+  await expect(page.locator("#main")).toHaveAttribute("aria-busy", "false");
+  await expect(page.getByLabel("Hours", { exact: true })).toHaveValue("");
 }
 
 test("registration, validation, profile persistence, logout and login", async ({
@@ -285,7 +287,7 @@ test("three users hire, award mixed work, record resources, and verify live roll
     await nav(worker, "Time & reports");
     const timeRow = worker.getByRole("row").filter({ hasText: "Site cleanup" });
     await timeRow.getByRole("button", { name: "Edit", exact: true }).click();
-    await worker.getByLabel("Hours", { exact: true }).fill("3");
+    await worker.getByRole("dialog").getByLabel("Hours", { exact: true }).fill("3");
     await submit(worker, "Save changes");
     await expect(
       worker.locator(".stat").filter({ hasText: "Total hours" }),
@@ -336,9 +338,7 @@ test("mobile console, empty states and safe rendering of profile text", async ({
     .getByRole("button", { name: "Log time", exact: true })
     .first()
     .click();
-  await expect(page.getByRole("dialog")).toContainText(
-    "You need an active assignment",
-  );
+  await expect(page.locator("#main")).toContainText("No active assignments");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await nav(page, "Overview");

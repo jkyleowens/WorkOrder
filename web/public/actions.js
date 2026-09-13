@@ -746,61 +746,12 @@ export async function action(c, name, id) {
     );
   }
   if (name === "log-time") {
-    const assignments = (await all("/me/assignments")).filter(executable);
-    if (!assignments.length)
-      return modal(
-        "Log time",
-        empty(
-          "You need an active assignment",
-          "Win a project bid, or join an organization with awarded work, to start logging time.",
-        ),
-        null,
-      );
-    modal(
-      "Log time",
-      select(
-        "Assignment",
-        "subdivision_id",
-        assignments.map((s) => [
-          s.id,
-          `${s.project.title} · ${s.scope} (${s.awardedOrganization?.name || "independent"})`,
-        ]),
-        id || assignments[0].id,
-      ) +
-        `<div class="form-grid">${field("Date worked", "date", "date", today(), "required")}${field("Hours", "hours", "number", "", 'required min="0.01" max="24" step="0.01"')}</div>` +
-        '<p id="time-pay-preview" class="pay-highlight" aria-live="polite"></p>' +
-        textarea("Note (optional)", "note", "", 'maxlength="2000"') +
-        '<p class="hint">Organization work also appears in your team’s timesheet. Your organization’s individual pay or role rate is saved with this entry; independent work uses your profile rate.</p>',
-      (v) =>
-        done(
-          () =>
-            write("/time", {
-              ...v,
-              subdivision_id: Number(v.subdivision_id),
-              hours: Number(v.hours),
-            }),
-          "Time logged",
-        ),
-      "Log time",
-    );
-    const form = document.querySelector("#modal form");
-    const preview = () => {
-      const assignment = assignments.find(
-        (s) => s.id === Number(form.elements.subdivision_id.value),
-      );
-      const member = c.memberships.find(
-        (m) => m.org_id === assignment?.awarded_org_id,
-      );
-      const rate =
-        member?.hourly_rate ??
-        member?.companyRole?.hourly_rate ??
-        c.user.hourly_rate;
-      document.querySelector("#time-pay-preview").textContent =
-        `${money(rate)} / hour · ${money(Number(rate) * Number(form.elements.hours.value || 0))} labor`;
-    };
-    form.elements.subdivision_id.onchange = preview;
-    form.elements.hours.oninput = preview;
-    preview();
+    c.timeAssignment = id;
+    if (location.hash.split("?")[0].startsWith("#time")) {
+      const form = document.querySelector("#time-entry-form");
+      form?.scrollIntoView({ behavior: "smooth", block: "start" });
+      form?.querySelector("select")?.focus();
+    } else c.navigate("time/personal");
     return;
   }
   if (name === "edit-time") {

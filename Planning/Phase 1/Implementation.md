@@ -37,11 +37,17 @@ This is a **recorded-cost billing basis**, capped at the amended price. It does 
 
 For root work, the project client pays the awarded contractor. For a child scope, the immediate parent's awarded contractor is the payer (its owner/managers act for an organization). An unawarded parent falls back to the project client. A project client can inspect subcontract records but cannot approve them on behalf of the immediate payer. Ordinary crew members cannot inspect or decide commercial records. Completed scopes remain accessible for billing closeout.
 
-## Next increment — Stripe Connect funding and controlled payouts
+## Increment 2 — Stripe Connect funding and controlled payouts
 
 **User decision:** use Stripe Connect, with manual payouts rather than in-house escrow.
 
-The integration has not been wired or enabled in this increment. No API keys are needed for the work already shipped. A provider-confirmed payment ledger must be separate from external payment annotations; recording a check cannot authorize a Stripe payout.
+The repository contains the Connect adapter, funding migration and ledger, hosted onboarding, Checkout funding, approval-controlled transfers, manual payouts, signed webhooks, refunds, dispute holds and Billing interface. The interrupted time-entry changes had removed the API wiring; that wiring is now restored, including the raw webhook route before JSON parsing. External payment annotations remain separate and reduce the certified balance available for release.
+
+Automated funding tests use a deterministic provider with Stripe-signed webhook payloads. They cover authorization, asynchronous funding, duplicate/out-of-order events, concurrent releases, retries, refunds, disputes, waiver gates, and payout outcomes. They do not establish that a real Stripe test account has completed onboarding, collection and bank payout.
+
+The current implementation assumes US / USD and Express connected accounts with separate charges and transfers. Live keys remain disabled by default. Launch country/configuration confirmation and a real Stripe sandbox walkthrough remain outstanding. Settlement now persists the resolution and its required evidence packet atomically, fixing a database constraint failure found by the existing dispute tests.
+
+The holding-date display is advisory; pooled balances and partial payouts still need a reconciled age ledger before it can reliably enforce deadlines.
 
 Implementation sequence:
 
@@ -54,11 +60,15 @@ Implementation sequence:
 
 Stripe's current documentation (checked September 13, 2026): [manual payouts](https://docs.stripe.com/connect/manual-payouts) and [separate charges and transfers](https://docs.stripe.com/connect/separate-charges-and-transfers). Manual payout holding periods currently depend on country: US two years, Thailand ten days, other countries ninety days. The Payouts API moves connected-account balance to an external account; charge/transfer routing is a separate concern. Stripe does not provide escrow accounts. Product language should say **funded**, **awaiting release**, **payout processing** and **paid**, backed by the corresponding provider records.
 
+## Integrated time entry
+
+Time & reports now includes an inline assignment form for up to 31 dates and durations per submission. Project and overview shortcuts open this workspace. The server saves the batch atomically, snapshots the applicable pay rate, attributes organization work automatically, and checks combined daily hours across all assignments under a user lock. Failed batches preserve entered values; successful batches refresh the grid, totals and entries. The grid continues to display durations, not recorded start/end timestamps.
+
 ## Remaining roadmap
 
 | Objective                        | State after increment 1                                                          |
 | -------------------------------- | -------------------------------------------------------------------------------- |
-| Scope funding / release ledger   | Stripe Connect selected; integration next                                        |
+| Scope funding / release ledger   | Connect implemented and reconnected; real sandbox verification pending                                        |
 | Progress billing / retainage     | Cost-based records implemented; Stripe settlement and fixed-price billing remain |
 | Change orders                    | Price and schedule deltas, acceptance and history implemented                    |
 | Lien waivers                     | Not implemented                                                                  |

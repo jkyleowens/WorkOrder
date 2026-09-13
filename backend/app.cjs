@@ -570,6 +570,12 @@ function createApp(
     201,
   );
   send("post", "/time", (req) => service.logTime(req.user.id, req.body), 201);
+  send(
+    "post",
+    "/time/bulk",
+    (req) => service.logTimeBulk(req.user.id, req.body),
+    201,
+  );
   send("patch", "/time/:id", (req) =>
     service.editTime(req.user.id, param(req), req.body),
   );
@@ -675,13 +681,21 @@ function createApp(
         "Content-Type": file.content_type,
         "Content-Length": String(file.byte_size),
         "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
-        "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
+        "Content-Security-Policy":
+          "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
         "Cache-Control": "private, no-store",
       })
       .send(file.data);
   });
-  send("get", "/credentials", (req) => trust.credentials(req.user.id, req.query));
-  send("post", "/credentials", (req) => trust.addCredential(req.user.id, req.body), 201);
+  send("get", "/credentials", (req) =>
+    trust.credentials(req.user.id, req.query),
+  );
+  send(
+    "post",
+    "/credentials",
+    (req) => trust.addCredential(req.user.id, req.body),
+    201,
+  );
   send("post", "/credentials/:id/withdraw", (req) =>
     trust.withdrawCredential(req.user.id, param(req)),
   );
@@ -691,18 +705,45 @@ function createApp(
   send("get", "/subdivisions/:id/review", (req) =>
     trust.scopeReview(req.user.id, param(req)),
   );
-  send("post", "/subdivisions/:id/review", (req) => trust.review(req.user.id, param(req), req.body), 201);
+  send(
+    "post",
+    "/subdivisions/:id/review",
+    (req) => trust.review(req.user.id, param(req), req.body),
+    201,
+  );
   send("get", "/subdivisions/:id/disputes", (req) =>
     trust.disputesForScope(req.user.id, param(req)),
   );
-  send("post", "/subdivisions/:id/disputes", (req) => trust.openDispute(req.user.id, param(req), req.body), 201);
-  send("get", "/disputes/:id", (req) => trust.disputeDetail(req.user.id, param(req)));
-  send("get", "/disputes/:id/packet", (req) => trust.packet(req.user.id, param(req)));
-  send("post", "/disputes/:id/comments", (req) => trust.comment(req.user.id, param(req), req.body), 201);
-  send("post", "/disputes/:id/proposals", (req) => trust.propose(req.user.id, param(req), req.body));
-  send("post", "/disputes/:id/response", (req) => trust.respond(req.user.id, param(req), req.body));
-  send("post", "/disputes/:id/withdraw", (req) => trust.withdraw(req.user.id, param(req), req.body));
-  send("get", "/admin/credentials", (req) => trust.reviewQueue(req.user.id, req.query));
+  send(
+    "post",
+    "/subdivisions/:id/disputes",
+    (req) => trust.openDispute(req.user.id, param(req), req.body),
+    201,
+  );
+  send("get", "/disputes/:id", (req) =>
+    trust.disputeDetail(req.user.id, param(req)),
+  );
+  send("get", "/disputes/:id/packet", (req) =>
+    trust.packet(req.user.id, param(req)),
+  );
+  send(
+    "post",
+    "/disputes/:id/comments",
+    (req) => trust.comment(req.user.id, param(req), req.body),
+    201,
+  );
+  send("post", "/disputes/:id/proposals", (req) =>
+    trust.propose(req.user.id, param(req), req.body),
+  );
+  send("post", "/disputes/:id/response", (req) =>
+    trust.respond(req.user.id, param(req), req.body),
+  );
+  send("post", "/disputes/:id/withdraw", (req) =>
+    trust.withdraw(req.user.id, param(req), req.body),
+  );
+  send("get", "/admin/credentials", (req) =>
+    trust.reviewQueue(req.user.id, req.query),
+  );
   send("patch", "/admin/credentials/:id", (req) =>
     trust.reviewCredential(req.user.id, param(req), req.body),
   );

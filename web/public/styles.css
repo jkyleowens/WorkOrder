@@ -2016,3 +2016,6 @@ tbody tr:hover {
 .timeline-block > strong {
   margin-top: 6px;
 }
+
+.time-entry-row { border-bottom: 1px solid var(--line, #d4d8dc); padding: 16px 0; margin-bottom: 16px; }
+#time-entry-form { scroll-margin-top: 24px; }

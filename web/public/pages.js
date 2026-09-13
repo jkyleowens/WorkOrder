@@ -1,3 +1,4 @@
+import { timeEntryForm } from "./time-entry.js";
 import {
   renderBilling,
   renderApplication,
@@ -436,7 +437,10 @@ export async function renderPage(c, route, part, page = 0) {
               money(
                 rootContracts.reduce(
                   (n, s) =>
-                    n + Number(s.certified) - Number(s.paid) - Number(s.released),
+                    n +
+                    Number(s.certified) -
+                    Number(s.paid) -
+                    Number(s.released),
                   0,
                 ),
               ),
@@ -779,6 +783,7 @@ export async function renderPage(c, route, part, page = 0) {
             ]
           : []),
       ]) +
+      panel("Log time", timeEntryForm(c)) +
       (!org ? panel("Daily grid", timeGrid()) : "") +
       panel(
         org ? "Team timesheets" : "Time entries",

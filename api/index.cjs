@@ -3,7 +3,6 @@
 // per cold start (guarded so concurrent cold invocations don't race).
 const { createDatabase, migrate } = require("../backend/database.cjs");
 const { createApp } = require("../backend/app.cjs");
-const { createStripeProvider } = require("../backend/payments.cjs");
 
 let appPromise;
 
@@ -20,12 +19,6 @@ async function bootstrap() {
     // Vercel terminates TLS and forwards the original protocol/host; trust
     // its proxy so secure cookies and req.protocol behave correctly.
     trustProxy: 1,
-    paymentProvider: createStripeProvider({
-      secretKey: process.env.STRIPE_SECRET_KEY,
-      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-      live: process.env.PAYMENTS_LIVE === "true",
-    }),
-    appUrl: process.env.APP_URL,
   });
   return runtime.app;
 }

@@ -864,6 +864,50 @@ class PlatformService {
       );
     });
   }
+  async logTimeBulk(user, input) {
+    const d = schemas.timeBulk.parse(input);
+    return this.db.transaction(async (t) => {
+      const { s } = await this.work(d.subdivision_id, t);
+      await this.performer(user, s, t);
+      check(
+        d.org_id === undefined || d.org_id === s.awarded_org_id,
+        403,
+        "Organization does not match awarded work",
+      );
+      const u = await this.get("User", user, t, true);
+      const rate = await this.effectiveRate(u, s.awarded_org_id, t);
+      // Combine same-date rows so 24h checks see the true daily total, then
+      // validate each affected date once against existing saved entries plus
+      // every new entry being added for that date in this batch.
+      const byDate = new Map();
+      for (const entry of d.entries)
+        byDate.set(entry.date, (byDate.get(entry.date) || 0) + Math.round(entry.hours * 100));
+      for (const [entryDate, addedHours] of byDate) {
+        const existing =
+          (await this.m.Timesheet.sum("hours", {
+            where: { user_id: user, date: entryDate },
+            transaction: t,
+          })) || 0;
+        check(
+          Math.round(Number(existing) * 100) + addedHours <= 2400,
+          409,
+          `Daily time exceeds 24 hours on ${entryDate}`,
+        );
+      }
+      return this.m.Timesheet.bulkCreate(
+        d.entries.map((entry) => ({
+          subdivision_id: d.subdivision_id,
+          hours: entry.hours,
+          date: entry.date,
+          note: entry.note,
+          user_id: user,
+          org_id: s.awarded_org_id || null,
+          hourly_rate: rate,
+        })),
+        { transaction: t, returning: true },
+      );
+    });
+  }
   async timeEntries(user, input) {
     const range = schemas.range.parse(input);
     return this.m.Timesheet.findAll({
