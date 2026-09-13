@@ -18,6 +18,8 @@ function createApp(
     production = false,
     authLimit = 30,
     logger = console,
+    trustProxy,
+    pool: sharedPool,
   } = {},
 ) {
   if (!sessionSecret || sessionSecret.length < 32)
@@ -27,7 +29,18 @@ function createApp(
   const app = express(),
     service = new PlatformService(database),
     m = database.models;
-  const pool = new Pool({ connectionString: databaseUrl });
+  if (trustProxy !== undefined) app.set("trust proxy", trustProxy);
+  const ownsPool = !sharedPool;
+  const pool =
+    sharedPool ||
+    new Pool({
+      connectionString: databaseUrl,
+      max: production ? 3 : 10,
+      ssl:
+        production && !/localhost|127\.0\.0\.1/.test(databaseUrl)
+          ? { rejectUnauthorized: false }
+          : undefined,
+    });
   const store = new PgStore({
     pool,
     tableName: "sessions",
@@ -505,7 +518,7 @@ function createApp(
     service,
     close: async () => {
       store.close();
-      await pool.end();
+      if (ownsPool) await pool.end();
     },
   };
 }

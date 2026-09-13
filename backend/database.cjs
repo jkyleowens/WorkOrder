@@ -121,9 +121,16 @@ const definitions = {
     },
   ],
 };
-function createDatabase(url) {
+function createDatabase(url, options = {}) {
   if (!url) throw new Error("DATABASE_URL is required");
-  const db = new Sequelize(url, { dialect: "postgres", logging: false });
+  const db = new Sequelize(url, {
+    dialect: "postgres",
+    logging: false,
+    pool: options.pool || { max: 5, min: 0, idle: 10000 },
+    dialectOptions: options.ssl
+      ? { ssl: { require: true, rejectUnauthorized: false } }
+      : undefined,
+  });
   const models = {};
   for (const [name, [tableName, fields]] of Object.entries(definitions)) {
     class Entity extends Model {}
