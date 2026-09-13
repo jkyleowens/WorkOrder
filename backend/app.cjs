@@ -10,6 +10,7 @@ const { ZodError } = require("zod");
 const { Op } = require("sequelize");
 const { PlatformService, publicUser } = require("./services.cjs");
 const { schemas, id, date, check } = require("./validation.cjs");
+const { withNoVerifySsl } = require("./database.cjs");
 function createApp(
   database,
   {
@@ -31,15 +32,13 @@ function createApp(
     m = database.models;
   if (trustProxy !== undefined) app.set("trust proxy", trustProxy);
   const ownsPool = !sharedPool;
+  const useSsl = production && !/localhost|127\.0\.0\.1/.test(databaseUrl);
   const pool =
     sharedPool ||
     new Pool({
-      connectionString: databaseUrl,
+      connectionString: useSsl ? withNoVerifySsl(databaseUrl) : databaseUrl,
       max: production ? 3 : 10,
-      ssl:
-        production && !/localhost|127\.0\.0\.1/.test(databaseUrl)
-          ? { rejectUnauthorized: false }
-          : undefined,
+      ssl: useSsl ? { rejectUnauthorized: false } : undefined,
     });
   const store = new PgStore({
     pool,

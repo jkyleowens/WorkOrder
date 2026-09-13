@@ -121,20 +121,20 @@ const definitions = {
     },
   ],
 };
+function withNoVerifySsl(url) {
+  // Managed Postgres providers (Supabase, etc.) often include
+  // sslmode=require in their connection string. Newer pg versions treat
+  // require/prefer/verify-ca as aliases for verify-full, which performs
+  // strict certificate chain validation and overrides an explicit
+  // rejectUnauthorized: false. Force no-verify so the intended "encrypted,
+  // don't verify the chain" behavior actually takes effect.
+  const parsed = new URL(url);
+  parsed.searchParams.set("sslmode", "no-verify");
+  return parsed.toString();
+}
 function createDatabase(url, options = {}) {
   if (!url) throw new Error("DATABASE_URL is required");
-  let connectionUri = url;
-  if (options.ssl) {
-    // Managed Postgres providers (Supabase, etc.) often include
-    // sslmode=require in their connection string. Newer pg versions treat
-    // require/prefer/verify-ca as aliases for verify-full, which performs
-    // strict certificate chain validation and overrides the rejectUnauthorized:
-    // false below. Force no-verify so the intended "encrypted, don't verify
-    // the chain" behavior actually takes effect.
-    const parsed = new URL(url);
-    parsed.searchParams.set("sslmode", "no-verify");
-    connectionUri = parsed.toString();
-  }
+  const connectionUri = options.ssl ? withNoVerifySsl(url) : url;
   const db = new Sequelize(connectionUri, {
     dialect: "postgres",
     logging: false,
@@ -237,4 +237,4 @@ async function migrate(db) {
     }
   });
 }
-module.exports = { createDatabase, migrate };
+module.exports = { createDatabase, migrate, withNoVerifySsl };
