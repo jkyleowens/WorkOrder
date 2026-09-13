@@ -131,7 +131,8 @@ export async function renderPage(c, route, part, page = 0) {
         "Personal account",
         "Your profile",
         "Let people know what you do best.",
-        button("Edit profile", "profile", "", "primary"),
+        button("Edit profile", "profile", "", "primary") +
+          button("Sign out", "logout", "", "secondary"),
       ) +
       `<div class="profile-layout"><section class="panel profile-card"><span class="avatar large">${initials(c.user.full_name)}</span><h2>${esc(c.user.full_name)}</h2><p>${esc(c.user.email)}</p>${status(c.user.availability_status)}<hr><span class="muted">Hourly rate</span><strong class="large-number">${money(c.user.hourly_rate)} <small>/ hour</small></strong></section>${panel("Skills & experience", `<p class="muted">Your skills help clients and employers find the right fit.</p><div class="tags">${c.user.skills.length ? c.user.skills.map((s) => `<span>${esc(s)}</span>`).join("") : "<p>No skills added yet. Edit your profile to get started.</p>"}</div><hr><h3>Your organizations</h3>${c.memberships.length ? c.memberships.map((m) => `<a class="list-row" href="#organization/${m.org_id}"><span class="grow"><strong>${esc(m.organization.name)}</strong><small>${esc(m.organization.trade_focus || "Organization")}</small></span>${status(m.internal_role)}</a>`).join("") : empty("Better together", "Create an organization or apply for a role to join one.", link("Explore organizations", "organizations"))}`)}</div>`
     );
