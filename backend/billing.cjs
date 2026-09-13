@@ -162,7 +162,10 @@ class BillingService {
         n + (p.reverses_payment_id ? -cents(p.amount) : cents(p.amount)),
       0n,
     );
-    const released = releasedAmount(records.releases);
+    // Dispute settlements are not certified work, so only application releases settle applications.
+    const released = releasedAmount(
+      records.releases.filter((r) => r.application_id),
+    );
     const latest = approved.at(-1);
     return {
       currency: "USD",
@@ -217,7 +220,7 @@ class BillingService {
       COALESCE((SELECT sum(amount) FROM scope_change_orders WHERE subdivision_id=s.id AND status='accepted'),0)::text AS accepted_changes,
       COALESCE((SELECT sum(amount_due) FROM pay_applications WHERE subdivision_id=s.id AND status='approved'),0)::text AS certified,
       COALESCE((SELECT sum(CASE WHEN reverses_payment_id IS NULL THEN amount ELSE -amount END) FROM billing_payments WHERE subdivision_id=s.id),0)::text AS paid,
-      COALESCE((SELECT sum(amount-amount_reversed) FROM scope_releases WHERE subdivision_id=s.id AND status IN ('processing','paid','reversed')),0)::text AS released,
+      COALESCE((SELECT sum(amount-amount_reversed) FROM scope_releases WHERE subdivision_id=s.id AND application_id IS NOT NULL AND status IN ('processing','paid','reversed')),0)::text AS released,
       COALESCE((SELECT sum(amount_received) FROM scope_fundings WHERE subdivision_id=s.id AND status='succeeded'),0)::text AS funded,
       (SELECT count(*)::int FROM pay_applications WHERE subdivision_id=s.id AND status='submitted') AS pending_applications,
       (SELECT count(*)::int FROM scope_change_orders WHERE subdivision_id=s.id AND status='proposed') AS pending_changes

@@ -1,5 +1,7 @@
 const { BillingService, fingerprint } = require("./billing.cjs");
 const { FundingService } = require("./funding.cjs");
+const { FileService, FILE_TYPES } = require("./files.cjs");
+const { TrustService } = require("./trust.cjs");
 const express = require("express");
 const path = require("node:path");
 const session = require("express-session");
@@ -66,6 +68,8 @@ function createApp(
     appUrl,
     logger,
   });
+  const files = new FileService(service);
+  const trust = new TrustService(service, billing, funding, files);
   // Stripe signs the exact bytes it sends, so this route must read the raw body before JSON parsing.
   app.post(
     "/api/webhooks/stripe",
@@ -262,8 +266,13 @@ function createApp(
       skills: u.skills,
       hourly_rate: u.hourly_rate,
       availability_status: u.availability_status,
+      credentials: await trust.publicCredentials(u.id, null),
+      reputation: await trust.reputation(u.id, null),
     };
   });
+  send("get", "/organizations/:id/profile", (req) =>
+    trust.organizationProfile(param(req)),
+  );
   send(
     "post",
     "/organizations",
@@ -440,12 +449,26 @@ function createApp(
     const s = await service.get("ProjectSubdivision", param(req));
     const p = await service.get("Project", s.project_id);
     await service.canCommission(req.user.id, p, s);
-    return m.Bid.findAll({
+    const bids = await m.Bid.findAll({
       where: { subdivision_id: s.id },
       include: bidIncludes,
       ...page(req),
       order: [["id", "ASC"]],
     });
+    // Commissioners see each bidder's current credential standing and computed rating.
+    return Promise.all(
+      bids.map(async (b) => ({
+        ...b.toJSON(),
+        standing: await trust.standing(
+          b.bidding_user_id,
+          b.bidding_org_id,
+          s.required_credentials,
+        ),
+        reputation: await trust
+          .reputation(b.bidding_user_id, b.bidding_org_id)
+          .then(({ count, overall, value }) => ({ count, overall, value })),
+      })),
+    );
   });
   send("get", "/me/assignments", async (req) => {
     const memberships = await m.OrganizationMember.findAll({
@@ -630,6 +653,62 @@ function createApp(
   );
   send("post", "/waivers/:id/sign", (req) =>
     billing.waivers.sign(req.user.id, param(req), req.body),
+  );
+  app.post(
+    "/api/files",
+    express.raw({ type: FILE_TYPES, limit: "4mb" }),
+    async (req, res) =>
+      res.status(201).json(
+        await files.upload(req.user.id, {
+          buffer: Buffer.isBuffer(req.body) ? req.body : null,
+          contentType: req.get("content-type"),
+          filename: req.get("x-filename"),
+        }),
+      ),
+  );
+  app.get("/api/files/:id", async (req, res) => {
+    const file = await files.download(req.user.id, param(req));
+    const inline = file.content_type.startsWith("image/");
+    const ascii = file.filename.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "");
+    res
+      .set({
+        "Content-Type": file.content_type,
+        "Content-Length": String(file.byte_size),
+        "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
+        "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
+        "Cache-Control": "private, no-store",
+      })
+      .send(file.data);
+  });
+  send("get", "/credentials", (req) => trust.credentials(req.user.id, req.query));
+  send("post", "/credentials", (req) => trust.addCredential(req.user.id, req.body), 201);
+  send("post", "/credentials/:id/withdraw", (req) =>
+    trust.withdrawCredential(req.user.id, param(req)),
+  );
+  send("put", "/subdivisions/:id/requirements", (req) =>
+    trust.setRequirements(req.user.id, param(req), req.body),
+  );
+  send("get", "/subdivisions/:id/review", (req) =>
+    trust.scopeReview(req.user.id, param(req)),
+  );
+  send("post", "/subdivisions/:id/review", (req) => trust.review(req.user.id, param(req), req.body), 201);
+  send("get", "/subdivisions/:id/disputes", (req) =>
+    trust.disputesForScope(req.user.id, param(req)),
+  );
+  send("post", "/subdivisions/:id/disputes", (req) => trust.openDispute(req.user.id, param(req), req.body), 201);
+  send("get", "/disputes/:id", (req) => trust.disputeDetail(req.user.id, param(req)));
+  send("get", "/disputes/:id/packet", (req) => trust.packet(req.user.id, param(req)));
+  send("post", "/disputes/:id/comments", (req) => trust.comment(req.user.id, param(req), req.body), 201);
+  send("post", "/disputes/:id/proposals", (req) => trust.propose(req.user.id, param(req), req.body));
+  send("post", "/disputes/:id/response", (req) => trust.respond(req.user.id, param(req), req.body));
+  send("post", "/disputes/:id/withdraw", (req) => trust.withdraw(req.user.id, param(req), req.body));
+  send("get", "/admin/credentials", (req) => trust.reviewQueue(req.user.id, req.query));
+  send("patch", "/admin/credentials/:id", (req) =>
+    trust.reviewCredential(req.user.id, param(req), req.body),
+  );
+  send("get", "/admin/disputes", (req) => trust.adminDisputes(req.user.id));
+  send("post", "/admin/disputes/:id/resolve", (req) =>
+    trust.mediate(req.user.id, param(req), req.body),
   );
   send("get", "/billing", (req) => billing.list(req.user.id, req.query));
   send("get", "/subdivisions/:id/billing", (req) =>

@@ -640,13 +640,14 @@ class FundingService {
           },
           { transaction: t },
         );
-        await this.billing.waivers.sync(row.application_id, t);
+        if (row.application_id)
+          await this.billing.waivers.sync(row.application_id, t);
         const ctx = await this.scopeParties(row.subdivision_id, t);
         await this.billing.notify(
           ctx,
           null,
           "Funds released",
-          `${ctx.s.scope} · USD ${amount(cents(row.amount))} to the contractor's payout balance`,
+          `${ctx.s.scope} · USD ${amount(cents(row.amount))} to the contractor's payout balance${row.dispute_id ? " under a dispute resolution" : ""}`,
           t,
         );
       });
@@ -714,8 +715,11 @@ class FundingService {
         { transaction: t },
       );
     });
+    return this.sendRefund(row, provider);
+  }
+  async sendRefund(row, provider = this.requireProvider()) {
     if (row.provider_refund_id || row.status !== "processing") return row;
-    const funding = await this.platform.get("ScopeFunding", fundingId);
+    const funding = await this.platform.get("ScopeFunding", row.funding_id);
     try {
       const refund = await provider.createRefund({
         paymentIntent: funding.payment_intent_id,
@@ -896,7 +900,8 @@ class FundingService {
         },
         { transaction: t },
       );
-      await this.billing.waivers.sync(release.application_id, t);
+      if (release.application_id)
+        await this.billing.waivers.sync(release.application_id, t);
       return;
     }
     if (event.type.startsWith("payout.")) {

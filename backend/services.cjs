@@ -9,6 +9,8 @@ class PlatformService {
   constructor({ db, models }) {
     this.db = db;
     this.m = models;
+    // Eligibility checks (e.g. credentials) run inside bid and award transactions.
+    this.bidRules = [];
   }
   async get(name, id, transaction, lock = false) {
     const row = await this.m[name].findByPk(id, {
@@ -562,6 +564,11 @@ class PlatformService {
           "Client organization cannot bid",
         );
       }
+      for (const rule of this.bidRules)
+        await rule(
+          { user, userId: org_id ? null : user, orgId: org_id || null, s, p, phase: "bid" },
+          t,
+        );
       const parent = s.parent_subdivision_id
         ? await this.get("ProjectSubdivision", s.parent_subdivision_id, t)
         : null;
@@ -615,6 +622,11 @@ class PlatformService {
       await this.canCommission(user, p, s, t);
       const b = await this.get("Bid", id, t, true);
       check(s.status === "open" && b.status === "pending");
+      for (const rule of this.bidRules)
+        await rule(
+          { user, userId: b.bidding_user_id, orgId: b.bidding_org_id, s, p, phase: "award" },
+          t,
+        );
       await this.m.Bid.update(
         { status: "rejected" },
         { where: { subdivision_id: s.id, status: "pending" }, transaction: t },

@@ -2,102 +2,10 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { randomUUID } = require("node:crypto");
 const request = require("supertest");
-const Stripe = require("stripe");
 const { setup } = require("./harness.cjs");
 const { BillingService, fingerprint } = require("../../backend/billing.cjs");
 const { FundingService } = require("../../backend/funding.cjs");
-const SECRET = "whsec_test_secret";
-const stripe = new Stripe("sk_test_signing_only");
-function fakeProvider() {
-  const state = {
-    n: 0,
-    accounts: new Map(),
-    sessions: new Map(),
-    transfers: [],
-    refunds: [],
-    payouts: [],
-    balances: {},
-    transferErrors: [],
-  };
-  const next = (prefix) => `${prefix}_${++state.n}`;
-  return {
-    name: "stripe",
-    live: false,
-    country: "US",
-    state,
-    async createAccount() {
-      const a = {
-        id: next("acct"),
-        details_submitted: false,
-        charges_enabled: false,
-        payouts_enabled: false,
-        transfers_active: false,
-        requirements: ["external_account"],
-      };
-      state.accounts.set(a.id, a);
-      return { ...a };
-    },
-    async accountLink(id, refresh, ret) {
-      return `https://connect.stripe.test/${id}?return=${encodeURIComponent(ret)}`;
-    },
-    async retrieveAccount(id) {
-      return { ...state.accounts.get(id) };
-    },
-    async createCheckout(o) {
-      const s = {
-        id: next("cs"),
-        url: `https://checkout.stripe.test/${state.n}`,
-        status: "open",
-        payment_status: "unpaid",
-        amount_total: Number(o.amount).toFixed(2),
-        payment_intent_id: null,
-        payment_intent_status: null,
-        charge_id: null,
-        last_error: "",
-        metadata: o.metadata,
-        options: o,
-      };
-      state.sessions.set(s.id, s);
-      return { ...s };
-    },
-    async retrieveCheckout(id) {
-      return { ...state.sessions.get(id) };
-    },
-    async createTransfer(o) {
-      const error = state.transferErrors.shift();
-      if (error) throw error;
-      const found = state.transfers.find(
-        (t) => t.idempotencyKey === o.idempotencyKey,
-      );
-      if (found) return found;
-      const t = { id: next("tr"), amount_reversed: "0.00", ...o };
-      state.transfers.push(t);
-      return t;
-    },
-    async createRefund(o) {
-      const r = { id: next("re"), status: "pending", ...o };
-      state.refunds.push(r);
-      return { id: r.id, status: r.status };
-    },
-    async balance(id) {
-      return state.balances[id] || { available: "0.00", pending: "0.00" };
-    },
-    async createPayout(o) {
-      const p = { id: next("po"), status: "pending", ...o };
-      state.payouts.push(p);
-      return { id: p.id, status: p.status };
-    },
-    constructEvent(raw, signature) {
-      try {
-        return stripe.webhooks.constructEvent(raw, signature, SECRET);
-      } catch {
-        const error = new Error("Invalid webhook signature");
-        error.status = 400;
-        throw error;
-      }
-    },
-  };
-}
+const { fakeProvider, SECRET, stripe } = require("./fake-stripe.cjs");
 const provider = fakeProvider();
 const t = setup({ paymentProvider: provider, appUrl: "https://app.test" });
 const billing = () => new BillingService(t.s);
