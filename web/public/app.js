@@ -1,3 +1,4 @@
+import { mountTimeGrid } from "./time-grid.js";
 import { api, all, write, refreshCsrf } from "./api.js";
 import {
   esc,
@@ -39,11 +40,14 @@ const c = {
     else location.hash = route;
   },
 };
+let cleanupTimeGrid;
 let generation = 0,
   authBusy = false;
 const brand = `<a class="brand" href="/">${'<img src="/assets/mark.svg" alt="" width="32" height="32">'}WorkOrder<span>®</span></a>`;
 function auth(register = location.pathname === "/register", message = "") {
   generation++;
+  cleanupTimeGrid?.();
+  cleanupTimeGrid = null;
   c.user = null;
   root.innerHTML = `<main id="main" class="auth-layout" aria-busy="false"><section class="auth-story">${brand}<div class="story-copy"><p class="eyebrow">THE WAY GOOD WORK HAPPENS</p><h1>Many ways to work.<br>One place to belong.</h1><p>Find your next opportunity. Bring your people together. Make something that matters.</p></div><div class="auth-diagram" aria-hidden="true"><div class="diagram-user"><span class="avatar">YOU</span><strong>One account. Every possibility.</strong></div><div class="diagram-branches"><span>Independent work</span><span>Your projects</span><span>Your organization</span></div></div><footer>Built around people. Ready for work.</footer></section><section class="auth-form-wrap"><div class="auth-mobile-brand">${brand}</div><div class="auth-form"><p class="eyebrow">${register ? "START YOUR NEXT CHAPTER" : "YOUR WORKSPACE IS WAITING"}</p><h2>${register ? "Create your account" : "Welcome back"}</h2><p>${register ? "A little about you. A world of possibilities." : "Sign in to pick up where you left off."}</p><form id="auth-form">${register ? field("Full name", "full_name", "text", "", 'required maxlength="120" autocomplete="name"') : ""}${field("Email address", "email", "email", "", 'required maxlength="254" autocomplete="email"')}${field("Password", "password", "password", "", `required ${register ? 'minlength="12"' : ""} autocomplete="${register ? "new-password" : "current-password"}"`)}<label class="show-password"><input type="checkbox" id="show-password"> Show password</label>${register ? '<p class="hint">Use at least 12 characters (up to 72 bytes).</p>' : ""}<p class="form-error" role="alert" ${message ? "" : "hidden"}>${esc(message)}</p><button class="btn primary auth-submit" type="submit">${register ? "Create account" : "Sign in"} ${icon("arrow")}</button></form><p class="auth-switch">${register ? 'Already part of WorkOrder? <a href="/login">Sign in</a>' : 'New to WorkOrder? <a href="/register">Create an account</a>'}</p><div class="auth-note">${icon("check")} One account for your work, your clients, and your team.</div></div><footer class="auth-footer">WorkOrder · Your work, in order.</footer></section></main>`;
   document.querySelector("#show-password").onchange = (e) =>
@@ -104,6 +108,8 @@ function shell(route) {
   root.innerHTML = `<div class="console"><aside class="sidebar">${brand}<p class="nav-caption">WORKSPACE</p><nav aria-label="Main navigation">${navigation.map(([key, label, i]) => `<a href="#${key}" aria-label="${label}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}${selected === key ? '<span class="nav-dot"></span>' : ""}</a>`).join("")}</nav><div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(navigation.find(([key]) => key === selected)?.[1] || "Overview")}</span><div class="topbar-right"><a class="inbox-shortcut" href="#inbox" aria-label="Open inbox${c.unread ? `, ${c.unread} unread` : ""}">${icon("inbox")}${c.unread ? `<span class="unread-indicator"></span>` : ""}</a><span class="context-pill"><i></i>${esc(c.org?.name || "Connected workspace")}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div></div>`;
 }
 c.reload = async () => {
+  cleanupTimeGrid?.();
+  cleanupTimeGrid = null;
   const current = ++generation;
   if (c.user) {
     const main = document.querySelector("#main");
@@ -146,6 +152,7 @@ c.reload = async () => {
     c.data = view.data;
     const main = document.querySelector("#main");
     main.innerHTML = html;
+    cleanupTimeGrid = mountTimeGrid(main, c.data, c.range);
     main.setAttribute("aria-busy", "false");
     if (!document.querySelector("#modal").open)
       main.querySelector("h1")?.focus({ preventScroll: true });

@@ -1,3 +1,4 @@
+import { timeGrid } from "./time-grid.js";
 import { api, all } from "./api.js";
 import {
   typeBadges,
@@ -704,11 +705,6 @@ export async function renderPage(c, route, part, page = 0) {
     );
     const person = (id) =>
       members.find((m) => m.user_id === id)?.user.full_name || `Member ${id}`;
-    const days = Array.from({ length: 7 }, (_, i) => {
-      const dt = new Date(range.from + "T12:00:00");
-      dt.setDate(dt.getDate() + i);
-      return dt.toISOString().slice(0, 10);
-    }).filter((dt) => dt <= range.to);
     return (
       heading(
         org ? c.org.name : "Personal time",
@@ -740,19 +736,7 @@ export async function renderPage(c, route, part, page = 0) {
             ]
           : []),
       ]) +
-      (!org
-        ? panel(
-            "Daily grid",
-            `<p class="muted">${days.length === 7 ? "First seven days of your selected period" : "Your selected period"}</p><div class="week-grid">${days
-              .map((dt) => {
-                const total = d.entries
-                  .filter((e) => e.date === dt)
-                  .reduce((n, e) => n + Number(e.hours), 0);
-                return `<div class="day ${dt === today() ? "today" : ""}"><span>${new Date(dt + "T12:00:00").toLocaleDateString(undefined, { weekday: "short" })}</span><strong>${total.toFixed(2)}<small> h</small></strong><progress max="24" value="${total}" aria-label="${esc(dt)} hours"></progress><small>${dateLabel(dt)}</small></div>`;
-              })
-              .join("")}</div>`,
-          )
-        : "") +
+      (!org ? panel("Daily grid", timeGrid()) : "") +
       panel(
         org ? "Team timesheets" : "Time entries",
         d.entries.length
