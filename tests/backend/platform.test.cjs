@@ -82,7 +82,10 @@ test("versioned migrations are repeatable and model associations resolve", async
   const [rows] = await database.db.query(
     "SELECT count(*)::int AS n FROM schema_migrations",
   );
-  assert.equal(rows[0].n, 6);
+  const files = (
+    await fs.readdir(path.join(__dirname, "../../backend/migrations"))
+  ).filter((name) => name.endsWith(".sql"));
+  assert.equal(rows[0].n, files.length);
   const u = await user(),
     o = await s.createOrg(u.id, { name: "Builder" });
   assert.equal((await o.getCreator()).id, u.id);

@@ -1,4 +1,5 @@
 const { BillingService, fingerprint } = require("./billing.cjs");
+const { FundingService } = require("./funding.cjs");
 const express = require("express");
 const path = require("node:path");
 const session = require("express-session");
@@ -22,6 +23,8 @@ function createApp(
     logger = console,
     trustProxy,
     pool: sharedPool,
+    paymentProvider = null,
+    appUrl,
   } = {},
 ) {
   if (!sessionSecret || sessionSecret.length < 32)
@@ -58,6 +61,18 @@ function createApp(
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "../web/views"));
   app.use("/assets", express.static(path.join(__dirname, "../web/public")));
+  const billing = new BillingService(service);
+  const funding = new FundingService(service, billing, paymentProvider, {
+    appUrl,
+    logger,
+  });
+  // Stripe signs the exact bytes it sends, so this route must read the raw body before JSON parsing.
+  app.post(
+    "/api/webhooks/stripe",
+    express.raw({ type: "application/json", limit: "1mb" }),
+    async (req, res) =>
+      res.json(await funding.webhook(req.body, req.get("stripe-signature"))),
+  );
   app.use(express.json({ limit: "64kb" }));
   app.use(
     session({
@@ -559,7 +574,63 @@ function createApp(
   send("get", "/organizations/:id/dashboard", (req) =>
     service.orgDashboard(req.user.id, param(req), req.query),
   );
-  const billing = new BillingService(service);
+  const origin = (req) => `${req.protocol}://${req.get("host")}`;
+  send("get", "/payment-accounts", async (req) => ({
+    configured: funding.configured,
+    live: !!paymentProvider?.live,
+    accounts: await funding.accounts(req.user.id),
+  }));
+  send("post", "/payment-accounts", (req) =>
+    funding.startOnboarding(req.user.id, req.body, origin(req)),
+  );
+  send("post", "/payment-accounts/:id/refresh", (req) =>
+    funding.refreshAccount(req.user.id, param(req)),
+  );
+  send(
+    "post",
+    "/payment-accounts/:id/payouts",
+    (req) => funding.payout(req.user.id, param(req), req.body),
+    201,
+  );
+  send("get", "/subdivisions/:id/funding", (req) =>
+    funding.detail(req.user.id, param(req)),
+  );
+  send(
+    "post",
+    "/subdivisions/:id/fundings",
+    (req) => funding.fund(req.user.id, param(req), req.body, origin(req)),
+    201,
+  );
+  send("post", "/fundings/:id/refresh", (req) =>
+    funding.refreshFunding(req.user.id, param(req)),
+  );
+  send(
+    "post",
+    "/fundings/:id/refunds",
+    (req) => funding.refund(req.user.id, param(req), req.body),
+    201,
+  );
+  send(
+    "post",
+    "/subdivisions/:id/releases",
+    (req) => funding.release(req.user.id, param(req), req.body),
+    201,
+  );
+  send("post", "/releases/:id/retry", (req) =>
+    funding.retryRelease(req.user.id, param(req)),
+  );
+  send("get", "/subdivisions/:id/waivers", (req) =>
+    billing.waivers.list(req.user.id, param(req)),
+  );
+  send("get", "/projects/:id/waivers", (req) =>
+    billing.waivers.chain(req.user.id, param(req)),
+  );
+  send("get", "/waivers/:id", (req) =>
+    billing.waivers.get(req.user.id, param(req)),
+  );
+  send("post", "/waivers/:id/sign", (req) =>
+    billing.waivers.sign(req.user.id, param(req), req.body),
+  );
   send("get", "/billing", (req) => billing.list(req.user.id, req.query));
   send("get", "/subdivisions/:id/billing", (req) =>
     billing.detail(req.user.id, param(req)),

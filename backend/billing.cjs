@@ -1,15 +1,8 @@
 const { z } = require("zod");
 const { Op } = require("sequelize");
 const { date, schemas, check } = require("./validation.cjs");
-const cents = (value) => {
-  const text = String(value ?? 0);
-  const negative = text.startsWith("-");
-  const [whole, fraction = ""] = text.replace(/^-/, "").split(".");
-  const n = BigInt(whole) * 100n + BigInt((fraction + "00").slice(0, 2));
-  return negative ? -n : n;
-};
-const amount = (n) =>
-  `${n < 0n ? "-" : ""}${(n < 0n ? -n : n) / 100n}.${String((n < 0n ? -n : n) % 100n).padStart(2, "0")}`;
+const { cents, amount } = require("./money.cjs");
+const { WaiverService } = require("./waivers.cjs");
 const sum = (rows, key) => rows.reduce((n, row) => n + cents(row[key]), 0n);
 const money = z
   .number()
@@ -49,11 +42,17 @@ const changes = z
   })
   .strict();
 const utcToday = () => new Date().toISOString().slice(0, 10);
+// In-flight and completed provider releases both settle certified amounts; reversals restore them.
+const releasedAmount = (releases) =>
+  releases
+    .filter((r) => ["processing", "paid", "reversed"].includes(r.status))
+    .reduce((n, r) => n + cents(r.amount) - cents(r.amount_reversed), 0n);
 class BillingService {
   constructor(platform) {
     this.platform = platform;
     this.db = platform.db;
     this.m = platform.m;
+    this.waivers = new WaiverService(platform, this);
   }
   async manages(user, org, t) {
     if (!org) return false;
@@ -125,6 +124,7 @@ class BillingService {
     const change_orders = await this.m.ScopeChangeOrder.findAll(options);
     const applications = await this.m.PayApplication.findAll(options);
     const payments = await this.m.BillingPayment.findAll(options);
+    const releases = await this.m.ScopeRelease.findAll(options);
     const userIds = [
       ...new Set(
         [
@@ -148,7 +148,7 @@ class BillingService {
           raw: true,
         })
       : [];
-    return { change_orders, applications, payments, people };
+    return { change_orders, applications, payments, releases, people };
   }
   totals(ctx, records) {
     const accepted = records.change_orders.filter(
@@ -162,6 +162,7 @@ class BillingService {
         n + (p.reverses_payment_id ? -cents(p.amount) : cents(p.amount)),
       0n,
     );
+    const released = releasedAmount(records.releases);
     const latest = approved.at(-1);
     return {
       currency: "USD",
@@ -170,7 +171,8 @@ class BillingService {
       contract_value: amount(cents(ctx.bid.amount) + sum(accepted, "amount")),
       certified: amount(sum(approved, "amount_due")),
       paid: amount(paid),
-      outstanding: amount(sum(approved, "amount_due") - paid),
+      released: amount(released),
+      outstanding: amount(sum(approved, "amount_due") - paid - released),
       retainage: latest?.snapshot.retainage || "0.00",
       schedule_days: accepted.reduce((n, c) => n + c.schedule_days, 0),
     };
@@ -215,6 +217,8 @@ class BillingService {
       COALESCE((SELECT sum(amount) FROM scope_change_orders WHERE subdivision_id=s.id AND status='accepted'),0)::text AS accepted_changes,
       COALESCE((SELECT sum(amount_due) FROM pay_applications WHERE subdivision_id=s.id AND status='approved'),0)::text AS certified,
       COALESCE((SELECT sum(CASE WHEN reverses_payment_id IS NULL THEN amount ELSE -amount END) FROM billing_payments WHERE subdivision_id=s.id),0)::text AS paid,
+      COALESCE((SELECT sum(amount-amount_reversed) FROM scope_releases WHERE subdivision_id=s.id AND status IN ('processing','paid','reversed')),0)::text AS released,
+      COALESCE((SELECT sum(amount_received) FROM scope_fundings WHERE subdivision_id=s.id AND status='succeeded'),0)::text AS funded,
       (SELECT count(*)::int FROM pay_applications WHERE subdivision_id=s.id AND status='submitted') AS pending_applications,
       (SELECT count(*)::int FROM scope_change_orders WHERE subdivision_id=s.id AND status='proposed') AS pending_changes
       FROM project_subdivisions s JOIN projects p ON p.id=s.project_id
@@ -472,6 +476,7 @@ class BillingService {
         },
         { transaction: t },
       );
+      await this.waivers.sync(result.id, t);
       await this.notify(
         ctx,
         user,
@@ -520,6 +525,7 @@ class BillingService {
         },
         { transaction: t },
       );
+      await this.waivers.sync(application.id, t);
       await this.notify(
         ctx,
         user,
@@ -585,8 +591,11 @@ class BillingService {
             n + (p.reverses_payment_id ? -cents(p.amount) : cents(p.amount)),
           0n,
         );
+      const released = releasedAmount(
+        records.releases.filter((r) => r.application_id === id),
+      );
       check(
-        paid + cents(data.amount) <= cents(first.amount_due),
+        paid + released + cents(data.amount) <= cents(first.amount_due),
         409,
         "Payment exceeds the application’s unpaid balance",
       );
@@ -599,6 +608,7 @@ class BillingService {
         },
         { transaction: t },
       );
+      await this.waivers.sync(id, t);
       await this.notify(
         ctx,
         user,
@@ -657,6 +667,7 @@ class BillingService {
         },
         { transaction: t },
       );
+      await this.waivers.sync(original.application_id, t);
       await this.notify(
         ctx,
         user,
@@ -673,4 +684,4 @@ const fingerprint = (snapshot) =>
     .createHash("sha256")
     .update(JSON.stringify(snapshot))
     .digest("hex");
-module.exports = { BillingService, fingerprint };
+module.exports = { BillingService, fingerprint, cents, amount, releasedAmount };

@@ -1,4 +1,9 @@
-import { renderBilling, renderApplication } from "./billing.js";
+import {
+  renderBilling,
+  renderApplication,
+  renderWaiver,
+  renderWaiverChain,
+} from "./billing.js";
 import { timeGrid } from "./time-grid.js";
 import { api, all } from "./api.js";
 import {
@@ -64,6 +69,8 @@ export async function renderPage(c, route, part, page = 0) {
   const d = c.data;
   if (route === "billing") return renderBilling(c, part, page);
   if (route === "application") return renderApplication(c, part);
+  if (route === "waiver") return renderWaiver(c, part);
+  if (route === "waivers") return renderWaiverChain(c, part);
   if (route === "inbox") {
     const unreadOnly = part === "unread";
     const result = await api(
@@ -362,7 +369,7 @@ export async function renderPage(c, route, part, page = 0) {
             : null;
         if (cost) projectCosts.push(cost);
         const finance = commercial.find((v) => v.id === s.id);
-        return `<article class="panel subdivision ${s.depth ? "child-scope" : ""}" id="scope-${s.id}" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Scope ${s.outline} · ${esc(s.awardedOrganization?.name || s.awardedUser?.full_name || "Awaiting contractor")}</span><h2>${esc(s.scope)}</h2>${parent ? `<a class="muted" href="#project/${p.id}">↳ ${esc(parent.scope)}</a>` : ""}</div>${status(s.status)}</div><div class="actions">${canManage && ["open", "awarded", "active"].includes(s.status) ? button("Add child scopes", "add-child", s.id) : ""}${s.status === "open" && !commission ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${["awarded", "active", "completed"].includes(s.status) && (own || s.awarded_user_id === c.user.id || manager || (parent && (parent.awarded_user_id === c.user.id || c.manages(parent.awarded_org_id)))) ? `<div class="scope-commercial">${link("Scope billing & changes", `billing/${s.id}`)}</div>` : ""}${finance ? `<div class="cost-strip scope-contract"><span>Amended price · USD<strong>${money(Number(finance.awarded) + Number(finance.accepted_changes))}</strong><small>Award ${money(finance.awarded)} + changes ${money(finance.accepted_changes)}</small></span><span>Certified, unpaid · USD<strong>${money(Number(finance.certified) - Number(finance.paid))}</strong><small>Approved amounts less recorded payments</small></span></div>` : ""}${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${cost?.labor?.length ? `<details class="labor-details"><summary>Labor by worker</summary>${laborTable(cost.labor)}</details>` : ""}${
+        return `<article class="panel subdivision ${s.depth ? "child-scope" : ""}" id="scope-${s.id}" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Scope ${s.outline} · ${esc(s.awardedOrganization?.name || s.awardedUser?.full_name || "Awaiting contractor")}</span><h2>${esc(s.scope)}</h2>${parent ? `<a class="muted" href="#project/${p.id}">↳ ${esc(parent.scope)}</a>` : ""}</div>${status(s.status)}</div><div class="actions">${canManage && ["open", "awarded", "active"].includes(s.status) ? button("Add child scopes", "add-child", s.id) : ""}${s.status === "open" && !commission ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${["awarded", "active", "completed"].includes(s.status) && (own || s.awarded_user_id === c.user.id || manager || (parent && (parent.awarded_user_id === c.user.id || c.manages(parent.awarded_org_id)))) ? `<div class="scope-commercial">${link("Scope billing & changes", `billing/${s.id}`)}</div>` : ""}${finance ? `<div class="cost-strip scope-contract"><span>Amended price · USD<strong>${money(Number(finance.awarded) + Number(finance.accepted_changes))}</strong><small>Award ${money(finance.awarded)} + changes ${money(finance.accepted_changes)}</small></span><span>Certified, unpaid · USD<strong>${money(Number(finance.certified) - Number(finance.paid) - Number(finance.released))}</strong><small>Approved amounts less releases and recorded payments</small></span><span>Funded · USD<strong>${money(finance.funded)}</strong><small>${money(finance.released)} released via Stripe</small></span></div>` : ""}${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${cost?.labor?.length ? `<details class="labor-details"><summary>Labor by worker</summary>${laborTable(cost.labor)}</details>` : ""}${
           commission
             ? `<h3>Bids ${bids.length ? `(${bids.length})` : ""}</h3>${
                 bids.length
@@ -393,7 +400,7 @@ export async function renderPage(c, route, part, page = 0) {
         p.description || "Project scope and execution",
         status(p.status),
       ) +
-      `<div class="actions space-bottom">${own && p.status === "open" ? button("Edit subdivisions", "subdivide", p.id) + button("Cancel project", "cancel-project", p.id, "danger") : ""}</div>` +
+      `<div class="actions space-bottom">${own && p.status === "open" ? button("Edit subdivisions", "subdivide", p.id) + button("Cancel project", "cancel-project", p.id, "danger") : ""}${commercial.length ? link("Lien waiver chain", `waivers/${p.id}`) : ""}</div>` +
       stats([
         ["Work packages", p.subdivisions.length, "Across all levels"],
         [
@@ -428,7 +435,8 @@ export async function renderPage(c, route, part, page = 0) {
               "Certified, unpaid · USD",
               money(
                 rootContracts.reduce(
-                  (n, s) => n + Number(s.certified) - Number(s.paid),
+                  (n, s) =>
+                    n + Number(s.certified) - Number(s.paid) - Number(s.released),
                   0,
                 ),
               ),

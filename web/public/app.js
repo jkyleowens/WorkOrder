@@ -99,7 +99,7 @@ const navigation = [
 ];
 function shell(route) {
   const selected =
-    route === "application"
+    ["application", "waiver", "waivers"].includes(route)
       ? "billing"
       : route === "project"
         ? "projects"

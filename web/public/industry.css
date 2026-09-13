@@ -774,3 +774,96 @@ dialog {
   align-items: baseline;
   gap: 10px;
 }
+/* Scope funding and payouts: provider-confirmed states only. */
+.status.succeeded,
+.status.paid {
+  color: #365b49;
+  background: #e7eee9;
+  border-color: #c9d9cf;
+}
+.status.processing,
+.status.requested,
+.status.in_transit,
+.status.onboarding {
+  background: #e1ebf5;
+  color: #2c455d;
+  border-color: #bbcedf;
+}
+.status.failed,
+.status.expired,
+.status.reversed,
+.status.canceled,
+.status.inactive {
+  color: #813c3a;
+  background: #f3e9e8;
+  border-color: #e2cac8;
+}
+.panel h3 {
+  margin-top: 24px;
+}
+.billing-notice > .btn {
+  margin-left: auto;
+}
+/* Lien waivers: requested → signed is permanent; void is superseded. */
+.status.requested {
+  color: #775525;
+  background: #f5edde;
+  border-color: #e3d5b9;
+}
+.status.signed {
+  color: #365b49;
+  background: #e7eee9;
+  border-color: #c9d9cf;
+}
+.status.void {
+  color: #813c3a;
+  background: #f3e9e8;
+  border-color: #e2cac8;
+}
+.waiver-document .document-parties {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.waiver-text {
+  margin: 20px 0;
+}
+.waiver-text p {
+  max-width: 78ch;
+  line-height: 1.6;
+}
+.signature-block {
+  margin-top: 24px;
+  padding: 18px 0;
+  border-top: 2px solid var(--steel);
+}
+.signature-block strong {
+  display: block;
+  font-family: var(--heading-font);
+  font-size: 26px;
+  margin: 6px 0;
+}
+.hash {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.confirm-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.confirm-check input {
+  width: auto;
+  margin-top: 3px;
+}
+.waiver-scope {
+  margin-top: 24px;
+  padding-left: 12px;
+}
+@media print {
+  .signature-block,
+  .waiver-text p,
+  .waiver-scope {
+    break-inside: avoid;
+  }
+}
