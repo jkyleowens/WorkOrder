@@ -28,6 +28,7 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^3.0.3",
     "connect-pg-simple": "^10.0.0",
     "ejs": "^6.0.1",
