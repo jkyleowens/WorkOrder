@@ -5,5 +5,5 @@
       "maxDuration": 30
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "./src/app.js" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index.cjs" }]
 }
