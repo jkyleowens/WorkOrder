@@ -1,3 +1,4 @@
+const { BillingService, fingerprint } = require("./billing.cjs");
 const express = require("express");
 const path = require("node:path");
 const session = require("express-session");
@@ -557,6 +558,49 @@ function createApp(
   );
   send("get", "/organizations/:id/dashboard", (req) =>
     service.orgDashboard(req.user.id, param(req), req.query),
+  );
+  const billing = new BillingService(service);
+  send("get", "/billing", (req) => billing.list(req.user.id, req.query));
+  send("get", "/subdivisions/:id/billing", (req) =>
+    billing.detail(req.user.id, param(req)),
+  );
+  send("get", "/pay-applications/:id", async (req) => {
+    const application = await service.get("PayApplication", param(req));
+    return billing.detail(req.user.id, application.subdivision_id);
+  });
+  send(
+    "post",
+    "/subdivisions/:id/changes",
+    (req) => billing.propose(req.user.id, param(req), req.body),
+    201,
+  );
+  send("patch", "/changes/:id", (req) =>
+    billing.decideChange(req.user.id, param(req), req.body),
+  );
+  send("post", "/subdivisions/:id/pay-applications/preview", async (req) => {
+    const snapshot = await billing.preview(req.user.id, param(req), req.body);
+    return { snapshot, fingerprint: fingerprint(snapshot) };
+  });
+  send(
+    "post",
+    "/subdivisions/:id/pay-applications",
+    (req) => billing.submitApplication(req.user.id, param(req), req.body),
+    201,
+  );
+  send("patch", "/pay-applications/:id", (req) =>
+    billing.decideApplication(req.user.id, param(req), req.body),
+  );
+  send(
+    "post",
+    "/pay-applications/:id/payments",
+    (req) => billing.recordPayment(req.user.id, param(req), req.body),
+    201,
+  );
+  send(
+    "post",
+    "/billing-payments/:id/reversal",
+    (req) => billing.reversePayment(req.user.id, param(req), req.body),
+    201,
   );
   app.use((req, res) => res.status(404).json({ error: "Not found" }));
   app.use((err, req, res, next) => {

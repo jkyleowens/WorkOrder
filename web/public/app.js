@@ -89,6 +89,7 @@ const navigation = [
   ["overview", "Overview", "overview"],
   ["inbox", "Inbox", "inbox"],
   ["projects", "Projects", "projects"],
+  ["billing", "Billing", "billing"],
   ["jobs", "Employment", "jobs"],
   ["time", "Time & reports", "time"],
   ["inventory", "Inventory", "inventory"],
@@ -98,13 +99,15 @@ const navigation = [
 ];
 function shell(route) {
   const selected =
-    route === "project"
-      ? "projects"
-      : route === "job"
-        ? "jobs"
-        : route === "organization"
-          ? "organizations"
-          : route;
+    route === "application"
+      ? "billing"
+      : route === "project"
+        ? "projects"
+        : route === "job"
+          ? "jobs"
+          : route === "organization"
+            ? "organizations"
+            : route;
   root.innerHTML = `<div class="console"><aside class="sidebar">${brand}<p class="nav-caption">WORKSPACE</p><nav aria-label="Main navigation">${navigation.map(([key, label, i]) => `<a href="#${key}" aria-label="${label}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}${selected === key ? '<span class="nav-dot"></span>' : ""}</a>`).join("")}</nav><div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(navigation.find(([key]) => key === selected)?.[1] || "Overview")}</span><div class="topbar-right"><a class="inbox-shortcut" href="#inbox" aria-label="Open inbox${c.unread ? `, ${c.unread} unread` : ""}">${icon("inbox")}${c.unread ? `<span class="unread-indicator"></span>` : ""}</a><span class="context-pill"><i></i>${esc(c.org?.name || "Connected workspace")}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div></div>`;
 }
 c.reload = async () => {

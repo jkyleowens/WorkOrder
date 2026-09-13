@@ -122,3 +122,21 @@ read, or mark all as read. Read state persists across sessions. Counts refresh
 when navigating or refreshing; this is an activity inbox, without direct-message
 composition or live push. Notifications begin with new activity after migration.
 Migration `005-organization-types-inbox.sql` is applied at server startup.
+
+## Phase 1 commercial workspace
+
+The Industry redesign and Billing navigation are now part of the web console.
+Open an awarded scope's **Scope billing & changes** link to propose amendments,
+prepare/review progress applications, approve them as the paying party, or record
+external payments. The Billing page lists authorized direct and subcontract work.
+
+Applications retain their source records, period, saved costs, retainage and
+approval history. Open an application to print/save a PDF or export a CSV.
+Payments are annotations of transactions made elsewhere, with partial payment,
+references and append-only corrections. They do not hold funds or trigger a bank
+transfer. Stripe Connect with manual payouts is the selected next integration.
+
+See [the implementation record](../Planning/Phase%201/Implementation.md) for
+calculation rules, supported scope, Stripe integration sequence and remaining
+roadmap items. See [the design system](DESIGN_SYSTEM.md) for reusable components.
+Migration `006-scope-billing.sql` is applied by the normal startup migration flow.

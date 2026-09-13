@@ -36,6 +36,7 @@ export const initials = (name) =>
   );
 export const icon = (name) => {
   const paths = {
+    billing: "M5 3h14v18l-3-2-4 2-4-2-3 2z M8 8h8 M8 12h8 M8 16h4",
     inbox: "M3 4h18v16H3z M3 13h5l2 3h4l2-3h5 M7 8h10",
     overview: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
     projects: "M3 7h18v14H3z M8 7V3h8v4",
@@ -110,8 +111,10 @@ export function modal(title, body, onSubmit, submit = "Save changes") {
     const error = dialog.querySelector(".form-error");
     error.hidden = true;
     try {
-      await onSubmit(Object.fromEntries(new FormData(event.target)));
-      dialog.close();
+      const result = await onSubmit(
+        Object.fromEntries(new FormData(event.target)),
+      );
+      if (result !== false) dialog.close();
     } catch (e) {
       error.textContent = e.message;
       error.hidden = false;

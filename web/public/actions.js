@@ -1,3 +1,4 @@
+import { billingAction } from "./billing.js";
 import { api, all, write } from "./api.js";
 import {
   typeFields,
@@ -24,6 +25,7 @@ const executable = (s) => ["awarded", "active"].includes(s.status);
 export async function action(c, name, id) {
   const d = c.data;
   id = Number(id) || undefined;
+  if (name.startsWith("billing-")) return billingAction(c, name, id);
   const done = async (fn, message = "Changes saved") => {
     await fn();
     toast(message);

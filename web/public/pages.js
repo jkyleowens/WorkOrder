@@ -1,3 +1,4 @@
+import { renderBilling, renderApplication } from "./billing.js";
 import { timeGrid } from "./time-grid.js";
 import { api, all } from "./api.js";
 import {
@@ -61,6 +62,8 @@ const laborTable = (entries, name) => {
 export async function renderPage(c, route, part, page = 0) {
   c.data = {};
   const d = c.data;
+  if (route === "billing") return renderBilling(c, part, page);
+  if (route === "application") return renderApplication(c, part);
   if (route === "inbox") {
     const unreadOnly = part === "unread";
     const result = await api(
@@ -135,7 +138,7 @@ export async function renderPage(c, route, part, page = 0) {
           ? button("Post a project", "project", "", "primary")
           : button("Log time", "log-time", "", "primary"),
       ) +
-      `<section class="welcome-band"><div><span class="eyebrow">${c.org ? "Working together" : "Make room for good work"}</span><h2>${c.org ? "Keep everyone moving in the same direction." : "Your next chapter starts here."}</h2><p>${c.org ? "Review assignments, coordinate your roster, and see where resources go." : "Find a project, build your team, or bring an idea to life."}</p><div class="actions">${link("Explore projects", "projects", "primary")}${link(c.org ? "Manage hiring" : "Find a job", c.org ? "jobs/hiring" : "jobs")}</div></div><div class="workmark" aria-hidden="true"><span>W</span><small>YOUR WORK.<br>IN ORDER.</small></div></section>` +
+      `<section class="welcome-band"><div><span class="eyebrow">${clientMode ? "Client workbench" : work.length ? "Contractor workbench" : "Start your next contract"}</span><h2>${clientMode ? "Move your projects forward." : work.length ? "Record the work. Keep progress visible." : "Find the right work. Build your reputation."}</h2><p>${clientMode ? "Review your work packages, agree scope changes, and certify applications." : work.length ? "Your assignments, hours, and billing records are connected to the same scopes." : "Build your profile, explore open projects, or post work for your team."}</p><div class="actions">${link(clientMode ? "Review projects" : work.length ? "Your assignments" : "Explore projects", clientMode ? "projects/mine" : work.length ? "projects/work" : "projects", "primary")}${link(clientMode || work.length ? "Open billing" : "Find a job", clientMode || work.length ? "billing" : "jobs")}</div></div><div class="workmark" aria-hidden="true"><span>W</span><small>YOUR WORK.<br>IN ORDER.</small></div></section>` +
       stats([
         [
           "Hours this week",
@@ -335,6 +338,8 @@ export async function renderPage(c, route, part, page = 0) {
         });
     };
     visit();
+    const commercial = await all(`/billing?project_id=${p.id}`);
+    const rootContracts = commercial.filter((s) => !s.parent_subdivision_id);
     const projectCosts = [];
     const subHtml = await Promise.all(
       ordered.map(async (s) => {
@@ -356,7 +361,8 @@ export async function renderPage(c, route, part, page = 0) {
             ? await api(`/subdivisions/${s.id}/costs`)
             : null;
         if (cost) projectCosts.push(cost);
-        return `<article class="panel subdivision ${s.depth ? "child-scope" : ""}" id="scope-${s.id}" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Scope ${s.outline} · ${esc(s.awardedOrganization?.name || s.awardedUser?.full_name || "Awaiting contractor")}</span><h2>${esc(s.scope)}</h2>${parent ? `<a class="muted" href="#project/${p.id}">↳ ${esc(parent.scope)}</a>` : ""}</div>${status(s.status)}</div><div class="actions">${canManage && ["open", "awarded", "active"].includes(s.status) ? button("Add child scopes", "add-child", s.id) : ""}${s.status === "open" && !commission ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${cost?.labor?.length ? `<details class="labor-details"><summary>Labor by worker</summary>${laborTable(cost.labor)}</details>` : ""}${
+        const finance = commercial.find((v) => v.id === s.id);
+        return `<article class="panel subdivision ${s.depth ? "child-scope" : ""}" id="scope-${s.id}" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Scope ${s.outline} · ${esc(s.awardedOrganization?.name || s.awardedUser?.full_name || "Awaiting contractor")}</span><h2>${esc(s.scope)}</h2>${parent ? `<a class="muted" href="#project/${p.id}">↳ ${esc(parent.scope)}</a>` : ""}</div>${status(s.status)}</div><div class="actions">${canManage && ["open", "awarded", "active"].includes(s.status) ? button("Add child scopes", "add-child", s.id) : ""}${s.status === "open" && !commission ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${["awarded", "active", "completed"].includes(s.status) && (own || s.awarded_user_id === c.user.id || manager || (parent && (parent.awarded_user_id === c.user.id || c.manages(parent.awarded_org_id)))) ? `<div class="scope-commercial">${link("Scope billing & changes", `billing/${s.id}`)}</div>` : ""}${finance ? `<div class="cost-strip scope-contract"><span>Amended price · USD<strong>${money(Number(finance.awarded) + Number(finance.accepted_changes))}</strong><small>Award ${money(finance.awarded)} + changes ${money(finance.accepted_changes)}</small></span><span>Certified, unpaid · USD<strong>${money(Number(finance.certified) - Number(finance.paid))}</strong><small>Approved amounts less recorded payments</small></span></div>` : ""}${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${cost?.labor?.length ? `<details class="labor-details"><summary>Labor by worker</summary>${laborTable(cost.labor)}</details>` : ""}${
           commission
             ? `<h3>Bids ${bids.length ? `(${bids.length})` : ""}</h3>${
                 bids.length
@@ -406,6 +412,35 @@ export async function renderPage(c, route, part, page = 0) {
           "Delivered scopes",
         ],
       ]) +
+      (rootContracts.length
+        ? stats([
+            [
+              "Direct contract value · USD",
+              money(
+                rootContracts.reduce(
+                  (n, s) => n + Number(s.awarded) + Number(s.accepted_changes),
+                  0,
+                ),
+              ),
+              "Root awards + accepted changes; excludes nested subcontracts",
+            ],
+            [
+              "Certified, unpaid · USD",
+              money(
+                rootContracts.reduce(
+                  (n, s) => n + Number(s.certified) - Number(s.paid),
+                  0,
+                ),
+              ),
+              "Approved direct-contract applications less recorded payments",
+            ],
+            [
+              "Payments recorded · USD",
+              money(rootContracts.reduce((n, s) => n + Number(s.paid), 0)),
+              "External direct-contract payments, net of reversals",
+            ],
+          ])
+        : "") +
       panel(
         "Delivery progress",
         `<progress class="project-progress" max="${p.subdivisions.length || 1}" value="${p.subdivisions.filter((s) => s.status === "completed").length}" aria-label="Completed work packages"></progress><p class="muted">Expand your delivery plan with child scopes. Each package has its own contractor, bids and costs.</p>`,

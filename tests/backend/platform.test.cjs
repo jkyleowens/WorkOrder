@@ -82,7 +82,7 @@ test("versioned migrations are repeatable and model associations resolve", async
   const [rows] = await database.db.query(
     "SELECT count(*)::int AS n FROM schema_migrations",
   );
-  assert.equal(rows[0].n, 5);
+  assert.equal(rows[0].n, 6);
   const u = await user(),
     o = await s.createOrg(u.id, { name: "Builder" });
   assert.equal((await o.getCreator()).id, u.id);
@@ -1159,6 +1159,311 @@ test("notifications are transactional, private, and retain read state", async ()
     .expect(200);
   assert.equal(
     (await b.agent.get("/api/notifications/unread-count")).body.count,
+    0,
+  );
+});
+
+const { BillingService, fingerprint } = require("../../backend/billing.cjs");
+const { randomUUID } = require("node:crypto");
+const billing = () => new BillingService(s);
+async function applicationFor(
+  w,
+  from = "2026-01-01",
+  to = "2026-01-31",
+  extra = {},
+) {
+  const data = {
+    from,
+    to,
+    retainage_percent: 5,
+    stored_materials: 0,
+    ...extra,
+  };
+  const snapshot = await billing().preview(w.worker.id, w.sub.id, data);
+  return billing().submitApplication(w.worker.id, w.sub.id, {
+    ...data,
+    expected: fingerprint(snapshot),
+  });
+}
+test("billing requires counterparty acceptance and preserves commercial history", async () => {
+  const w = await work(),
+    stranger = await user();
+  await reject(() => billing().detail(stranger.id, w.sub.id), 403);
+  const co = await billing().propose(w.worker.id, w.sub.id, {
+    title: "Added landing",
+    description: "Extend landing by two feet",
+    amount: 250.01,
+    schedule_days: 2,
+  });
+  assert.equal(
+    (await billing().detail(w.client.id, w.sub.id)).totals.contract_value,
+    "1000.00",
+  );
+  await reject(
+    () => billing().decideChange(w.worker.id, co.id, { status: "accepted" }),
+    403,
+  );
+  await billing().decideChange(w.client.id, co.id, {
+    status: "accepted",
+    note: "Agreed",
+  });
+  const detail = await billing().detail(w.worker.id, w.sub.id);
+  assert.equal(detail.totals.contract_value, "1250.01");
+  assert.equal(detail.totals.schedule_days, 2);
+  assert.equal(detail.change_orders[0].decided_by_user_id, w.client.id);
+  assert.equal(detail.change_orders[0].decision_note, "Agreed");
+  await reject(
+    () => billing().decideChange(w.client.id, co.id, { status: "accepted" }),
+    409,
+  );
+  const decrease = await billing().propose(w.client.id, w.sub.id, {
+    title: "Deduct",
+    description: "Remove work",
+    amount: -1500,
+  });
+  await reject(
+    () =>
+      billing().decideChange(w.worker.id, decrease.id, { status: "accepted" }),
+    409,
+  );
+  await billing().decideChange(w.worker.id, decrease.id, {
+    status: "rejected",
+    note: "Price below zero",
+  });
+});
+test("progress applications snapshot source rates, reject stale previews, and carry retainage without double billing", async () => {
+  const w = await work();
+  await s.profile(w.worker.id, { hourly_rate: 50.01 });
+  await s.logTime(w.worker.id, {
+    subdivision_id: w.sub.id,
+    hours: 2,
+    date: "2026-01-10",
+  });
+  const data = {
+    from: "2026-01-01",
+    to: "2026-01-31",
+    stored_materials: 20,
+    retainage_percent: 5,
+  };
+  const snapshot = await billing().preview(w.worker.id, w.sub.id, data);
+  assert.equal(snapshot.labor_cost, "100.02");
+  assert.equal(snapshot.retainage, "6.00");
+  assert.equal(snapshot.amount_due, "114.02");
+  await s.logTime(w.worker.id, {
+    subdivision_id: w.sub.id,
+    hours: 1,
+    date: "2026-01-11",
+  });
+  await reject(
+    () =>
+      billing().submitApplication(w.worker.id, w.sub.id, {
+        ...data,
+        expected: fingerprint(snapshot),
+      }),
+    409,
+  );
+  const a = await applicationFor(w);
+  assert.equal(a.snapshot.amount_due, "142.53");
+  await reject(
+    () =>
+      billing().decideApplication(w.worker.id, a.id, { status: "approved" }),
+    403,
+  );
+  await reject(() => applicationFor(w), 409);
+  await billing().decideApplication(w.client.id, a.id, { status: "approved" });
+  await reject(() => applicationFor(w), 409);
+  await s.profile(w.worker.id, { hourly_rate: 60 });
+  await s.logTime(w.worker.id, {
+    subdivision_id: w.sub.id,
+    hours: 1,
+    date: "2026-02-11",
+  });
+  const second = await applicationFor(w, "2026-02-01", "2026-02-28");
+  assert.equal(second.snapshot.previous_certified, "142.53");
+  assert.equal(second.snapshot.previous_payments, "0.00");
+  assert.equal(second.snapshot.labor_cost, "210.03");
+  assert.equal(second.snapshot.amount_due, "57.00");
+  await billing().decideApplication(w.client.id, second.id, {
+    status: "approved",
+  });
+  await s.subdivisionStatus(w.client.id, w.sub.id, { status: "completed" });
+  const closeout = await applicationFor(w, "2026-03-01", "2026-03-31", {
+    retainage_percent: 0,
+  });
+  assert.equal(closeout.snapshot.amount_due, "10.50");
+  await billing().decideApplication(w.client.id, closeout.id, {
+    status: "approved",
+  });
+  const detail = await billing().detail(w.client.id, w.sub.id);
+  assert.equal(detail.totals.certified, "210.03");
+  assert.equal(detail.totals.retainage, "0.00");
+  assert.equal(
+    detail.applications[0].snapshot.sources.labor[0].hourly_rate,
+    "50.01",
+  );
+});
+test("external payments serialize balance checks, retry safely, and use append-only reversals", async () => {
+  const w = await work();
+  await s.profile(w.worker.id, { hourly_rate: 100 });
+  await s.logTime(w.worker.id, {
+    subdivision_id: w.sub.id,
+    hours: 1,
+    date: "2026-01-05",
+  });
+  const a = await applicationFor(w);
+  const data = {
+    amount: 60,
+    paid_on: "2026-02-01",
+    reference: "CHECK-001",
+    request_key: randomUUID(),
+  };
+  await reject(() => billing().recordPayment(w.client.id, a.id, data), 409);
+  await billing().decideApplication(w.client.id, a.id, { status: "approved" });
+  await reject(() => billing().recordPayment(w.worker.id, a.id, data), 403);
+  const results = await Promise.allSettled([
+    billing().recordPayment(w.client.id, a.id, data),
+    billing().recordPayment(w.client.id, a.id, {
+      ...data,
+      request_key: randomUUID(),
+      reference: "CHECK-002",
+    }),
+  ]);
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(results.find((r) => r.status === "rejected").reason.status, 409);
+  const payment = results.find((r) => r.status === "fulfilled").value;
+  const retry = {
+    amount: 60,
+    paid_on: payment.paid_on,
+    reference: payment.reference,
+    request_key: payment.request_key,
+  };
+  assert.equal(
+    (await billing().recordPayment(w.client.id, a.id, retry)).id,
+    payment.id,
+  );
+  await reject(
+    () => billing().recordPayment(w.client.id, a.id, { ...retry, amount: 1 }),
+    409,
+  );
+  assert.equal(
+    (await billing().detail(w.client.id, w.sub.id)).totals.outstanding,
+    "35.00",
+  );
+  await assert.rejects(
+    () =>
+      database.models.BillingPayment.update(
+        { amount: 1 },
+        { where: { id: payment.id } },
+      ),
+    /append-only/,
+  );
+  const reversal = { note: "Wrong check reference", request_key: randomUUID() };
+  await billing().reversePayment(w.client.id, payment.id, reversal);
+  await billing().reversePayment(w.client.id, payment.id, reversal);
+  const detail = await billing().detail(w.client.id, w.sub.id);
+  assert.equal(detail.payments.length, 2);
+  assert.equal(detail.totals.paid, "0.00");
+  assert.equal(detail.totals.outstanding, "95.00");
+  await reject(
+    () =>
+      billing().reversePayment(w.client.id, payment.id, {
+        ...reversal,
+        request_key: randomUUID(),
+      }),
+    409,
+  );
+});
+test("subcontract billing is approved by the immediate payer, with project-client read access only", async () => {
+  const w = await work(true),
+    childWorker = await user(),
+    member = await user();
+  const [child] = await s.addChild(w.worker.id, w.sub.id, {
+    scopes: ["Child contract"],
+  });
+  const bid = await s.submitBid(childWorker.id, child.id, { amount: 200 });
+  await s.award(w.worker.id, bid.id);
+  const co = await billing().propose(childWorker.id, child.id, {
+    title: "Adjustment",
+    description: "More work",
+    amount: 10,
+  });
+  await reject(
+    () => billing().decideChange(w.client.id, co.id, { status: "accepted" }),
+    403,
+  );
+  await database.models.OrganizationMember.create({
+    user_id: member.id,
+    org_id: w.organization.id,
+    internal_role: "member",
+  });
+  await reject(() => billing().detail(member.id, child.id), 403);
+  await billing().decideChange(w.worker.id, co.id, { status: "accepted" });
+  const detail = await billing().detail(w.client.id, child.id);
+  assert.deepEqual(detail.permissions, { payer: false, contractor: false });
+  assert.equal(detail.totals.contract_value, "210.00");
+  const co2 = await billing().propose(w.worker.id, child.id, {
+    title: "Reduced work",
+    description: "Deduct work",
+    amount: -5,
+  });
+  await billing().decideChange(childWorker.id, co2.id, { status: "accepted" });
+  assert.equal(
+    (await billing().detail(childWorker.id, child.id)).totals.contract_value,
+    "205.00",
+  );
+});
+
+test("billing reconciles saved material costs and preserves approved snapshots after corrections", async () => {
+  const w = await work();
+  const item = await s.addItem(w.worker.id, {
+    item_name: "Board",
+    stock: 10,
+    unit_cost: 12.34,
+  });
+  const usage = await s.consume(w.worker.id, w.sub.id, {
+    item_id: item.id,
+    qty: 2,
+  });
+  // The fixture uses a historical consumption date so billing is deterministic.
+  await database.models.ProjectInventory.update(
+    { consumed_at: "2026-01-15T12:00:00Z" },
+    { where: { id: usage.id } },
+  );
+  await s.profile(w.worker.id, { hourly_rate: 20 });
+  const time = await s.logTime(w.worker.id, {
+    subdivision_id: w.sub.id,
+    date: "2026-01-15",
+    hours: 1,
+  });
+  const a = await applicationFor(w);
+  assert.equal(a.snapshot.material_cost, "24.68");
+  assert.equal(a.snapshot.labor_cost, "20.00");
+  assert.equal(a.snapshot.amount_due, "42.45");
+  await billing().decideApplication(w.client.id, a.id, { status: "approved" });
+  const co = await billing().propose(w.worker.id, w.sub.id, {
+    title: "Deduct",
+    description: "Remove nearly all work",
+    amount: -990,
+  });
+  await reject(
+    () => billing().decideChange(w.client.id, co.id, { status: "accepted" }),
+    409,
+  );
+  await database.models.Timesheet.update(
+    { hours: 2 },
+    { where: { id: time.id } },
+  );
+  assert.equal(
+    (await billing().detail(w.client.id, w.sub.id)).applications[0].snapshot
+      .labor_cost,
+    "20.00",
+  );
+  const listing = await billing().list(w.worker.id, { project_id: w.p.id });
+  assert.equal(listing.length, 1);
+  assert.equal(listing[0].certified, "42.45");
+  const stranger = await user();
+  assert.equal(
+    (await billing().list(stranger.id, { project_id: w.p.id })).length,
     0,
   );
 });

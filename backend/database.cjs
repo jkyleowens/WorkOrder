@@ -2,6 +2,54 @@ const { Sequelize, DataTypes: D, Model } = require("sequelize");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const definitions = {
+  ScopeChangeOrder: [
+    "scope_change_orders",
+    {
+      subdivision_id: D.INTEGER,
+      title: D.STRING,
+      description: D.TEXT,
+      amount: D.DECIMAL,
+      schedule_days: D.INTEGER,
+      proposed_by_user_id: D.INTEGER,
+      proposed_side: D.STRING,
+      status: D.STRING,
+      decided_by_user_id: D.INTEGER,
+      decision_note: D.TEXT,
+      created_at: D.DATE,
+      decided_at: D.DATE,
+    },
+  ],
+  PayApplication: [
+    "pay_applications",
+    {
+      subdivision_id: D.INTEGER,
+      period_from: D.DATEONLY,
+      period_to: D.DATEONLY,
+      snapshot: D.JSONB,
+      amount_due: D.DECIMAL,
+      status: D.STRING,
+      submitted_by_user_id: D.INTEGER,
+      decided_by_user_id: D.INTEGER,
+      decision_note: D.TEXT,
+      created_at: D.DATE,
+      decided_at: D.DATE,
+    },
+  ],
+  BillingPayment: [
+    "billing_payments",
+    {
+      subdivision_id: D.INTEGER,
+      application_id: D.INTEGER,
+      amount: D.DECIMAL,
+      paid_on: D.DATEONLY,
+      reference: D.STRING,
+      note: D.TEXT,
+      recorded_by_user_id: D.INTEGER,
+      reverses_payment_id: D.INTEGER,
+      request_key: D.UUID,
+      created_at: D.DATE,
+    },
+  ],
   Notification: [
     "notifications",
     {
