@@ -1596,3 +1596,24 @@ dialog form {
     margin-left: 12px;
   }
 }
+
+.pay-highlight {
+  font-size: 1.25rem;
+  font-weight: 650;
+  color: #436034;
+}
+.pay-highlight small {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #64716b;
+  margin-top: 0.35rem;
+}
+.labor-details {
+  margin: 1rem 0;
+}
+.labor-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.75rem 0;
+}

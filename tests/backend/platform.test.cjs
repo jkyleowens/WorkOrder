@@ -82,7 +82,7 @@ test("versioned migrations are repeatable and model associations resolve", async
   const [rows] = await database.db.query(
     "SELECT count(*)::int AS n FROM schema_migrations",
   );
-  assert.equal(rows[0].n, 3);
+  assert.equal(rows[0].n, 4);
   const u = await user(),
     o = await s.createOrg(u.id, { name: "Builder" });
   assert.equal((await o.getCreator()).id, u.id);
@@ -866,4 +866,203 @@ test("organization settings require management membership", async () => {
     trade_focus: "Construction",
   });
   assert.equal((await s.get("Organization", org.id)).name, "Updated");
+});
+
+test("pay negotiation requires current consent and snapshots organization agreements", async () => {
+  const { worker: owner, organization: org, client, sub } = await work(true);
+  const worker = await user(),
+    stranger = await user();
+  await s.profile(worker.id, { hourly_rate: 90 });
+  const role = await s.saveCompanyRole(owner.id, org.id, null, {
+    name: "Electrician",
+    description: "Install and inspect",
+    skills: ["Wiring"],
+    hourly_rate: 30,
+  });
+  const job = await s.postJob(owner.id, {
+    org_id: org.id,
+    company_role_id: role.id,
+    title: "Electrician",
+    description: "Join us",
+  });
+  assert.equal(Number(job.hourly_rate), 30);
+  const app = await s.apply(worker.id, job.id, {
+    desired_rate: 35,
+    note: "Experienced installer",
+  });
+  await reject(
+    () => s.counterOffer(stranger.id, app.id, { desired_rate: 5, revision: 0 }),
+    403,
+  );
+  const offer = await s.applicationAction(owner.id, app.id, "offered", {
+    offered_rate: 32,
+    revision: 0,
+  });
+  await reject(() => s.applicationAction(worker.id, app.id, "accepted"), 409);
+  const counter = await s.counterOffer(worker.id, app.id, {
+    desired_rate: 34,
+    revision: offer.revision,
+    note: "Can we meet at 34?",
+  });
+  assert.equal(counter.status, "pending");
+  assert.equal(counter.offered_rate, null);
+  await reject(
+    () =>
+      s.applicationAction(worker.id, app.id, "accepted", {
+        revision: offer.revision,
+      }),
+    409,
+  );
+  await reject(
+    () =>
+      s.applicationAction(owner.id, app.id, "offered", {
+        offered_rate: 1,
+        revision: offer.revision,
+      }),
+    409,
+  );
+  const final = await s.applicationAction(owner.id, app.id, "offered", {
+    offered_rate: 34,
+    revision: counter.revision,
+  });
+  await s.applicationAction(worker.id, app.id, "accepted", {
+    revision: final.revision,
+  });
+  const member = await s.member(worker.id, org.id);
+  assert.equal(Number(member.hourly_rate), 34);
+  assert.equal(member.company_role_id, role.id);
+  assert.equal(member.internal_role, "member");
+  await reject(
+    () =>
+      s.setMemberPay(worker.id, org.id, {
+        user_id: worker.id,
+        company_role_id: role.id,
+        hourly_rate: 500,
+      }),
+    403,
+  );
+  const first = await s.logTime(worker.id, {
+    subdivision_id: sub.id,
+    hours: 2.5,
+    date: "2026-09-13",
+  });
+  assert.equal(Number(first.hourly_rate), 34);
+  await s.saveCompanyRole(owner.id, org.id, role.id, {
+    name: "Lead electrician",
+    description: "Supervise installation",
+    skills: ["Wiring", "Inspection"],
+    hourly_rate: 40,
+  });
+  await s.profile(worker.id, { hourly_rate: 200 });
+  const second = await s.logTime(worker.id, {
+    subdivision_id: sub.id,
+    hours: 1,
+    date: "2026-09-13",
+  });
+  assert.equal(Number(second.hourly_rate), 34);
+  await s.setMemberPay(owner.id, org.id, {
+    user_id: worker.id,
+    company_role_id: role.id,
+    hourly_rate: null,
+  });
+  const third = await s.logTime(worker.id, {
+    subdivision_id: sub.id,
+    hours: 2,
+    date: "2026-09-13",
+  });
+  assert.equal(Number(third.hourly_rate), 40);
+  await s.editTime(worker.id, first.id, { hours: 3 });
+  assert.equal(Number((await s.get("Timesheet", first.id)).hourly_rate), 34);
+  await s.setMemberPay(owner.id, org.id, {
+    user_id: owner.id,
+    company_role_id: null,
+    hourly_rate: 20,
+  });
+  await s.logTime(owner.id, {
+    subdivision_id: sub.id,
+    hours: 1,
+    date: "2026-09-13",
+  });
+  const costs = await s.costs(client.id, sub.id);
+  assert.equal(Number(costs.labor_cost), 236);
+  assert.equal(costs.labor.length, 3);
+  assert.equal(
+    costs.labor.every((r) => r.user_id === worker.id),
+    true,
+  );
+  const report = await s.orgDashboard(owner.id, org.id, {
+    from: "2026-09-13",
+    to: "2026-09-13",
+  });
+  assert.equal(Number(report.labor_cost), 236);
+  assert.deepEqual(
+    report.entries.map((e) => Number(e.hourly_rate)).sort(),
+    [20, 34, 40],
+  );
+  assert.equal((await s.get("JobApplication", app.id)).negotiation.length, 5);
+});
+
+test("company roles stay within an organization and zero pay overrides role defaults", async () => {
+  const { worker: owner, organization: org, sub } = await work(true);
+  const other = await s.createOrg(owner.id, { name: "Other company" });
+  const role = await s.saveCompanyRole(owner.id, org.id, null, {
+    name: "Trainee",
+    hourly_rate: 20,
+  });
+  const stranger = await user();
+  await reject(
+    () =>
+      s.saveCompanyRole(stranger.id, org.id, role.id, {
+        name: "Hijacked",
+        hourly_rate: 999,
+      }),
+    403,
+  );
+  await reject(
+    () =>
+      s.saveCompanyRole(owner.id, other.id, role.id, {
+        name: "Wrong org",
+        hourly_rate: 40,
+      }),
+    403,
+  );
+  await reject(
+    () =>
+      s.postJob(owner.id, {
+        org_id: other.id,
+        company_role_id: role.id,
+        title: "Invalid",
+        description: "Invalid",
+      }),
+    403,
+  );
+  await reject(
+    () =>
+      s.setMemberPay(owner.id, other.id, {
+        user_id: owner.id,
+        company_role_id: role.id,
+        hourly_rate: 30,
+      }),
+    403,
+  );
+  await assert.rejects(() =>
+    s.saveCompanyRole(owner.id, org.id, null, {
+      name: "Invalid",
+      hourly_rate: -1,
+    }),
+  );
+  await assert.rejects(() => s.apply(stranger.id, 1, { desired_rate: 10.001 }));
+  await s.setMemberPay(owner.id, org.id, {
+    user_id: owner.id,
+    company_role_id: role.id,
+    hourly_rate: 0,
+  });
+  const entry = await s.logTime(owner.id, {
+    subdivision_id: sub.id,
+    hours: 1,
+    date: "2026-09-13",
+  });
+  assert.equal(Number(entry.hourly_rate), 0);
+  const otherMember = await s.member(owner.id, other.id);
+  assert.equal(otherMember.hourly_rate, null);
 });

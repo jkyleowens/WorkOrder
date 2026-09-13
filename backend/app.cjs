@@ -225,7 +225,10 @@ function createApp(
   send("get", "/organizations", (req) =>
     m.OrganizationMember.findAll({
       where: { user_id: req.user.id },
-      include: [{ model: m.Organization, as: "organization" }],
+      include: [
+        { model: m.Organization, as: "organization" },
+        { model: m.OrganizationRole, as: "companyRole" },
+      ],
       ...page(req),
       order: [["id", "ASC"]],
     }),
@@ -234,7 +237,10 @@ function createApp(
     await service.member(req.user.id, param(req));
     return m.OrganizationMember.findAll({
       where: { org_id: param(req) },
-      include: [userInclude("user")],
+      include: [
+        userInclude("user"),
+        { model: m.OrganizationRole, as: "companyRole" },
+      ],
       ...page(req),
       order: [["id", "ASC"]],
     });
@@ -250,6 +256,34 @@ function createApp(
   );
   send("put", "/organizations/:id/members", (req) =>
     service.setMember(req.user.id, param(req), req.body),
+  );
+  send("get", "/organizations/:id/roles", async (req) => {
+    await service.member(req.user.id, param(req));
+    return m.OrganizationRole.findAll({
+      where: { org_id: param(req) },
+      ...page(req),
+      order: [["name", "ASC"]],
+    });
+  });
+  send(
+    "post",
+    "/organizations/:id/roles",
+    (req) => service.saveCompanyRole(req.user.id, param(req), null, req.body),
+    201,
+  );
+  send("patch", "/organizations/:id/roles/:roleId", (req) =>
+    service.saveCompanyRole(
+      req.user.id,
+      param(req),
+      id.parse(Number(req.params.roleId)),
+      req.body,
+    ),
+  );
+  send("put", "/organizations/:id/pay", (req) =>
+    service.setMemberPay(req.user.id, param(req), req.body),
+  );
+  send("post", "/applications/:id/counter", (req) =>
+    service.counterOffer(req.user.id, param(req), req.body),
   );
   send("post", "/jobs", (req) => service.postJob(req.user.id, req.body), 201);
   send("get", "/jobs", (req) =>
@@ -284,7 +318,7 @@ function createApp(
   send(
     "post",
     "/jobs/:id/applications",
-    (req) => service.apply(req.user.id, param(req)),
+    (req) => service.apply(req.user.id, param(req), req.body),
     201,
   );
   send("get", "/jobs/:id/applications", async (req) => {
@@ -310,10 +344,11 @@ function createApp(
       req.user.id,
       param(req),
       schemas.decision.parse(req.body).status,
+      req.body,
     ),
   );
   send("post", "/applications/:id/accept", (req) =>
-    service.applicationAction(req.user.id, param(req), "accepted"),
+    service.applicationAction(req.user.id, param(req), "accepted", req.body),
   );
   send("post", "/applications/:id/withdraw", (req) =>
     service.applicationAction(req.user.id, param(req), "withdrawn"),

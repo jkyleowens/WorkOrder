@@ -58,6 +58,37 @@ const schemas = {
   member: z
     .object({ user_id: id, internal_role: z.enum(["manager", "member"]) })
     .strict(),
+  companyRole: z
+    .object({
+      name: text(160),
+      description: z.string().trim().max(10000).default(""),
+      skills: z.array(text(80)).max(50).default([]),
+      hourly_rate: money,
+    })
+    .strict(),
+  memberPay: z
+    .object({
+      user_id: id,
+      company_role_id: id.nullable(),
+      hourly_rate: money.nullable(),
+    })
+    .strict(),
+  application: z
+    .object({
+      desired_rate: money.optional(),
+      note: z.string().trim().max(2000).default(""),
+    })
+    .strict(),
+  counter: z
+    .object({
+      desired_rate: money,
+      note: z.string().trim().max(2000).default(""),
+      revision: z.number().int().min(0),
+    })
+    .strict(),
+  acceptance: z
+    .object({ revision: z.number().int().min(0).optional() })
+    .strict(),
   context: z
     .object({
       mode: z.enum(["personal", "client", "organization"]),
@@ -69,9 +100,22 @@ const schemas = {
       "Organization context requires org_id only",
     ),
   job: z
-    .object({ title: text(), description: text(10000), org_id: id.optional() })
+    .object({
+      title: text(),
+      description: text(10000),
+      org_id: id.optional(),
+      company_role_id: id.optional(),
+      hourly_rate: money.optional(),
+    })
     .strict(),
-  decision: z.object({ status: z.enum(["offered", "rejected"]) }).strict(),
+  decision: z
+    .object({
+      status: z.enum(["offered", "rejected"]),
+      offered_rate: money.optional(),
+      note: z.string().trim().max(2000).default(""),
+      revision: z.number().int().min(0).optional(),
+    })
+    .strict(),
   project: z
     .object({
       title: text(),

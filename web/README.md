@@ -80,3 +80,28 @@ be subcontracted again, and every child must finish before its parent can finish
 Costs remain recorded against the individual work package where they occur.
 Migration `003-nested-work.sql` adds the parent relationship without changing
 existing work. The Vercel entry point applies migrations during startup.
+
+## Hourly pay and company roles
+
+Company roles contain a name, responsibilities, required skills and base hourly
+pay. Owners and managers can create/edit roles and assign a role and individual
+pay to a member. These job roles are separate from owner/manager/member access.
+An individual pay amount (including zero) overrides the role's base pay. Clearing
+it uses role pay; members without either use their profile rate.
+
+Job forms require advertised hourly pay and optionally start from a company role.
+Applicants request pay and can send new requests after an offer. Employers offer
+or revise a rate; every request/offer records its message in the pay discussion.
+A counterproposal invalidates the previous offer. Rated offers require acceptance
+of the reviewed revision, preventing acceptance of changed terms. Acceptance into
+an organization assigns the posting's role and saves the agreed individual pay.
+Editing the role's base rate does not override an individual's agreement.
+
+New timesheets snapshot the effective organization rate, or the profile rate for
+independent assignments. Rate changes apply when new entries are recorded,
+including newly entered backdated hours. Editing an existing entry preserves its
+saved rate. Company reports and project scope details show hours, saved rates and
+labor cost per worker; project totals count each scope once. Bid amounts remain
+separate from actual hourly labor costs. Existing unpriced jobs remain compatible
+with older clients; migration `004-pay-and-company-roles.sql` preserves all saved
+timesheet rates.

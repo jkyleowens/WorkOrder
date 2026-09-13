@@ -178,6 +178,7 @@ test("three users hire, award mixed work, record resources, and verify live roll
     await owner
       .getByLabel("Description", { exact: true })
       .fill("Join our construction team.");
+    await owner.getByLabel("Advertised hourly pay").fill("30");
     await submit(owner, "Post job");
     await nav(worker, "Employment");
     await worker
@@ -229,7 +230,7 @@ test("three users hire, award mixed work, record resources, and verify live roll
       await section.getByRole("button", { name: "Award bid" }).click();
       await submit(client, "Award bid");
     }
-    await profile(worker, 30);
+    await profile(worker, 90);
     await logTime(worker, "Driveway renovation · Paving (Acme Builders)", 4);
     await logTime(
       worker,
@@ -363,24 +364,133 @@ test("project work breakdown supports nested scopes without switching workspaces
     .click();
   await page.getByLabel("Scopes (one per line)").fill("Roofing");
   await submit(page, "Save changes");
-  const child = page
-    .locator(".subdivision")
-    .filter({
-      has: page.getByRole("heading", { name: "Roofing", exact: true }),
-    });
+  const child = page.locator(".subdivision").filter({
+    has: page.getByRole("heading", { name: "Roofing", exact: true }),
+  });
   await expect(child).toContainText("Scope 1.1");
   await child.getByRole("button", { name: "Add child scopes" }).click();
   await page.getByLabel("Scopes (one per line)").fill("Flashing");
   await submit(page, "Save changes");
   await expect(
-    page
-      .locator(".subdivision")
-      .filter({
-        has: page.getByRole("heading", { name: "Flashing", exact: true }),
-      }),
+    page.locator(".subdivision").filter({
+      has: page.getByRole("heading", { name: "Flashing", exact: true }),
+    }),
   ).toContainText("Scope 1.1.1");
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Flashing", exact: true }),
   ).toBeVisible();
+});
+
+test("company roles, negotiated pay and member overrides stay connected", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext(),
+    workerContext = await browser.newContext();
+  const owner = await ownerContext.newPage(),
+    worker = await workerContext.newPage();
+  const errors = [];
+  owner.on("pageerror", (e) => errors.push(e.message));
+  worker.on("pageerror", (e) => errors.push(e.message));
+  try {
+    await register(owner, "Pay Administrator", "pay-admin@example.com");
+    await register(worker, "Skilled Installer", "pay-worker@example.com");
+    await nav(owner, "Organizations");
+    await owner
+      .getByRole("button", { name: "Create organization", exact: true })
+      .first()
+      .click();
+    await owner.getByLabel("Organization name").fill("Pay Builders");
+    await submit(owner, "Create organization");
+    await organization(owner);
+    await owner.getByRole("button", { name: "Create company role" }).click();
+    await owner.getByLabel("Role name").fill("Installer");
+    await owner
+      .getByLabel("Responsibilities")
+      .fill("Install and inspect fixtures");
+    await owner
+      .getByLabel("Required skills (one per line)")
+      .fill("Installation\nInspection");
+    await owner.getByLabel("Base hourly pay").fill("30");
+    await submit(owner, "Save changes");
+    await owner
+      .getByRole("button", { name: "Post a job", exact: true })
+      .click();
+    await owner
+      .getByLabel("Company role (optional)")
+      .selectOption({ label: "Installer" });
+    await expect(owner.getByLabel("Advertised hourly pay")).toHaveValue(
+      "30.00",
+    );
+    await submit(owner, "Post job");
+    await nav(worker, "Employment");
+    await worker
+      .getByRole("article")
+      .filter({
+        has: worker.getByRole("heading", { name: "Installer", exact: true }),
+      })
+      .getByRole("link", { name: "View role" })
+      .click();
+    await worker.getByRole("button", { name: "Apply for this role" }).click();
+    await worker.getByLabel("Desired hourly pay").fill("35");
+    await worker
+      .getByLabel("Message to employer")
+      .fill("Five years of experience");
+    await submit(worker, "Apply");
+    await owner.reload();
+    await owner
+      .getByRole("button", { name: "Make offer", exact: true })
+      .click();
+    await owner.getByLabel("Offered hourly pay").fill("32");
+    await submit(owner, "Make offer");
+    await nav(worker, "Employment");
+    await worker
+      .getByRole("link", { name: "My applications", exact: true })
+      .click();
+    await worker.getByRole("button", { name: "Negotiate pay" }).click();
+    await worker.getByLabel("Desired hourly pay").fill("34");
+    await worker
+      .getByLabel("Message to employer")
+      .fill("Could we agree on 34?");
+    await submit(worker, "Send request");
+    await expect(
+      worker.getByRole("button", { name: "Accept offer" }),
+    ).toHaveCount(0);
+    await owner.reload();
+    await owner.getByRole("button", { name: "Pay discussion" }).click();
+    await expect(owner.getByRole("dialog")).toContainText(
+      "Could we agree on 34?",
+    );
+    await owner.getByRole("button", { name: "Close dialog" }).click();
+    await confirm(owner, "Make offer");
+    await worker.reload();
+    await confirm(worker, "Accept offer");
+    await organization(owner);
+    const roster = owner
+      .getByRole("row")
+      .filter({ hasText: "Skilled Installer" });
+    await expect(roster).toContainText("34.00 / hour");
+    await expect(roster).toContainText("Individual agreement");
+    await owner.getByRole("button", { name: "Edit company role" }).click();
+    await owner.getByLabel("Role name").fill("Senior installer");
+    await owner.getByLabel("Base hourly pay").fill("40");
+    await submit(owner, "Save changes");
+    await expect(roster).toContainText("Senior installer");
+    await expect(roster).toContainText("34.00 / hour");
+    await roster.getByRole("button", { name: "Role & pay" }).click();
+    await owner.getByLabel("Individual hourly pay (optional)").fill("");
+    await submit(owner, "Save changes");
+    await expect(roster).toContainText("40.00 / hour");
+    await expect(roster).toContainText("Role base pay");
+    await owner.reload();
+    await expect(roster).toContainText("40.00 / hour");
+    await owner.screenshot({
+      path: "test-results/company-pay.png",
+      fullPage: true,
+    });
+    expect(errors).toEqual([]);
+  } finally {
+    await ownerContext.close();
+    await workerContext.close();
+  }
 });

@@ -153,10 +153,102 @@ class PlatformService {
       );
     });
   }
+  async saveCompanyRole(user, org, id, input) {
+    const d = schemas.companyRole.parse(input);
+    return this.db.transaction(async (t) => {
+      await this.member(user, org, t, true);
+      if (!id)
+        return this.m.OrganizationRole.create(
+          { ...d, org_id: org },
+          { transaction: t },
+        );
+      const role = await this.get("OrganizationRole", id, t, true);
+      check(role.org_id === org, 403, "Role belongs to another organization");
+      return role.update(d, { transaction: t });
+    });
+  }
+  async setMemberPay(user, org, input) {
+    const d = schemas.memberPay.parse(input);
+    return this.db.transaction(async (t) => {
+      await this.get("Organization", org, t, true);
+      await this.member(user, org, t, true);
+      if (d.company_role_id) {
+        const role = await this.get("OrganizationRole", d.company_role_id, t);
+        check(role.org_id === org, 403, "Role belongs to another organization");
+      }
+      const member = await this.member(d.user_id, org, t);
+      return member.update(
+        { company_role_id: d.company_role_id, hourly_rate: d.hourly_rate },
+        { transaction: t },
+      );
+    });
+  }
+  async effectiveRate(user, org, t) {
+    if (org) {
+      const member = await this.member(user.id, org, t);
+      if (member.hourly_rate !== null) return member.hourly_rate;
+      if (member.company_role_id) {
+        const role = await this.get(
+          "OrganizationRole",
+          member.company_role_id,
+          t,
+        );
+        return role.hourly_rate;
+      }
+    }
+    return user.hourly_rate;
+  }
+  negotiationEvent(user, kind, rate, note = "") {
+    return { user_id: user, kind, rate, note, at: new Date().toISOString() };
+  }
+  async counterOffer(user, id, input) {
+    const d = schemas.counter.parse(input);
+    return this.db.transaction(async (t) => {
+      const initial = await this.get("JobApplication", id, t);
+      const job = await this.get("JobPosting", initial.job_posting_id, t, true);
+      const app = await this.get("JobApplication", id, t, true);
+      check(
+        app.applicant_user_id === user,
+        403,
+        "Only the applicant can negotiate",
+      );
+      check(
+        job.status === "open" && ["pending", "offered"].includes(app.status),
+      );
+      check(
+        app.revision === d.revision,
+        409,
+        "Offer changed. Refresh before responding.",
+      );
+      return app.update(
+        {
+          desired_rate: d.desired_rate,
+          offered_rate: null,
+          status: "pending",
+          revision: app.revision + 1,
+          negotiation: [
+            ...app.negotiation,
+            this.negotiationEvent(user, "requested", d.desired_rate, d.note),
+          ],
+        },
+        { transaction: t },
+      );
+    });
+  }
   async postJob(user, input) {
     const { org_id, ...d } = schemas.job.parse(input);
     return this.db.transaction(async (t) => {
       if (org_id) await this.member(user, org_id, t, true);
+      if (d.company_role_id) {
+        const role = await this.get("OrganizationRole", d.company_role_id, t);
+        check(
+          role.org_id === org_id,
+          403,
+          "Role belongs to another organization",
+        );
+        if (d.hourly_rate === undefined)
+          d.hourly_rate = Number(role.hourly_rate);
+      }
       return this.m.JobPosting.create(
         {
           ...d,
@@ -195,7 +287,8 @@ class PlatformService {
       return job.update({ status: "closed" }, { transaction: t });
     });
   }
-  async apply(user, id) {
+  async apply(user, id, input = {}) {
+    const d = schemas.application.parse(input);
     return this.db.transaction(async (t) => {
       const job = await this.get("JobPosting", id, t, true);
       check(job.status === "open");
@@ -214,12 +307,29 @@ class PlatformService {
           "Already a member",
         );
       return this.m.JobApplication.create(
-        { job_posting_id: id, applicant_user_id: user, status: "pending" },
+        {
+          job_posting_id: id,
+          applicant_user_id: user,
+          status: "pending",
+          desired_rate: d.desired_rate ?? job.hourly_rate,
+          revision: 0,
+          negotiation: [
+            this.negotiationEvent(
+              user,
+              "requested",
+              d.desired_rate ?? job.hourly_rate,
+              d.note,
+            ),
+          ],
+        },
         { transaction: t },
       );
     });
   }
-  async applicationAction(user, id, action) {
+  async applicationAction(user, id, action, input = {}) {
+    const d = ["offered", "rejected"].includes(action)
+      ? schemas.decision.parse({ ...input, status: action })
+      : schemas.acceptance.parse(input);
     return this.db.transaction(async (t) => {
       const initial = await this.get("JobApplication", id, t);
       const job = await this.get("JobPosting", initial.job_posting_id, t, true);
@@ -241,13 +351,51 @@ class PlatformService {
             : ["pending", "offered"].includes(app.status),
         );
       }
-      if (action === "accepted" && job.posted_by_org_id)
-        await this.m.OrganizationMember.findOrCreate({
+      if (d.revision !== undefined)
+        check(
+          d.revision === app.revision,
+          409,
+          "Offer changed. Refresh before responding.",
+        );
+      // Rated offers must be accepted explicitly at the version the applicant reviewed.
+      if (action === "accepted" && app.offered_rate !== null)
+        check(
+          d.revision !== undefined,
+          409,
+          "Review the current pay offer before accepting.",
+        );
+      const offered =
+        action === "offered"
+          ? (d.offered_rate ?? app.desired_rate ?? job.hourly_rate)
+          : app.offered_rate;
+      if (action === "accepted" && job.posted_by_org_id) {
+        const [, created] = await this.m.OrganizationMember.findOrCreate({
           where: { user_id: user, org_id: job.posted_by_org_id },
-          defaults: { internal_role: "member" },
+          defaults: {
+            internal_role: "member",
+            company_role_id: job.company_role_id,
+            hourly_rate: offered,
+          },
           transaction: t,
         });
-      return app.update({ status: action }, { transaction: t });
+        check(
+          created,
+          409,
+          "Already a member. Ask an administrator to update your company pay.",
+        );
+      }
+      return app.update(
+        {
+          status: action,
+          offered_rate: offered,
+          revision: app.revision + 1,
+          negotiation: [
+            ...app.negotiation,
+            this.negotiationEvent(user, action, offered, d.note),
+          ],
+        },
+        { transaction: t },
+      );
     });
   }
   async postProject(user, input) {
@@ -622,7 +770,7 @@ class PlatformService {
           ...d,
           user_id: user,
           org_id: s.awarded_org_id || null,
-          hourly_rate: u.hourly_rate,
+          hourly_rate: await this.effectiveRate(u, s.awarded_org_id, t),
         },
         { transaction: t },
       );
@@ -689,7 +837,7 @@ class PlatformService {
       { bind, transaction },
     );
     const [groups] = await this.db.query(
-      `SELECT subdivision_id,user_id,date,sum(hours)::text AS hours,sum(round(hours*hourly_rate,2))::text AS labor_cost FROM timesheets WHERE ${where}=$actor AND date BETWEEN $from AND $to GROUP BY subdivision_id,user_id,date ORDER BY date,subdivision_id,user_id`,
+      `SELECT subdivision_id,user_id,date,hourly_rate::text AS hourly_rate,sum(hours)::text AS hours,sum(round(hours*hourly_rate,2))::text AS labor_cost FROM timesheets WHERE ${where}=$actor AND date BETWEEN $from AND $to GROUP BY subdivision_id,user_id,date,hourly_rate ORDER BY date,subdivision_id,user_id`,
       { bind, transaction },
     );
     return { ...range, ...totals[0], entries: groups };
@@ -706,7 +854,11 @@ class PlatformService {
       "SELECT (SELECT COALESCE(sum(round(hours*hourly_rate,2)),0)::text FROM timesheets WHERE subdivision_id=$1) AS labor_cost, (SELECT COALESCE(sum(qty*unit_cost),0)::text FROM project_inventory WHERE subdivision_id=$1) AS material_cost",
       { bind: [id] },
     );
-    return rows[0];
+    const [labor] = await this.db.query(
+      "SELECT t.user_id,u.full_name,t.hourly_rate::text AS hourly_rate,sum(t.hours)::text AS hours,sum(round(t.hours*t.hourly_rate,2))::text AS labor_cost FROM timesheets t JOIN users u ON u.id=t.user_id WHERE subdivision_id=$1 GROUP BY t.user_id,u.full_name,t.hourly_rate ORDER BY u.full_name,t.hourly_rate",
+      { bind: [id] },
+    );
+    return { ...rows[0], labor };
   }
   async orgDashboard(user, org, input, transaction) {
     if (!transaction)

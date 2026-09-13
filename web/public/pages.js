@@ -31,6 +31,31 @@ const organizationName = (c, id) =>
 const orgPath = (c) => (c.org ? `/organizations/${c.org.id}` : "");
 const assignmentTitle = (s) =>
   s.project ? `${s.project.title} · ${s.scope}` : s.scope;
+const payLabel = (rate) =>
+  rate == null ? "Pay not specified" : `${money(rate)} / hour`;
+const paySummary = (a) =>
+  `<strong>Requested ${payLabel(a.desired_rate)}</strong><small>${a.status === "accepted" ? "Agreed" : "Offered"}: ${payLabel(a.offered_rate)}</small>`;
+const laborTable = (entries, name) => {
+  const groups = new Map();
+  for (const e of entries) {
+    const key = `${e.user_id}:${e.hourly_rate}`;
+    const group = groups.get(key) || { ...e, hours: 0, labor_cost: 0 };
+    group.hours += Number(e.hours);
+    group.labor_cost += Number(e.labor_cost);
+    groups.set(key, group);
+  }
+  return table(
+    ["Worker", "Hours", "Saved hourly rate", "Labor cost"],
+    [...groups.values()].map((e) =>
+      row([
+        esc(e.full_name || name?.(e.user_id) || `Worker ${e.user_id}`),
+        e.hours.toFixed(2),
+        money(e.hourly_rate),
+        money(e.labor_cost),
+      ]),
+    ),
+  );
+};
 export async function renderPage(c, route, part, page = 0) {
   c.data = {};
   const d = c.data;
@@ -275,6 +300,7 @@ export async function renderPage(c, route, part, page = 0) {
         });
     };
     visit();
+    const projectCosts = [];
     const subHtml = await Promise.all(
       ordered.map(async (s) => {
         const assigned = allAssignments.find((a) => a.id === s.id);
@@ -294,7 +320,8 @@ export async function renderPage(c, route, part, page = 0) {
           own || s.awarded_user_id === c.user.id || manager
             ? await api(`/subdivisions/${s.id}/costs`)
             : null;
-        return `<article class="panel subdivision ${s.depth ? "child-scope" : ""}" id="scope-${s.id}" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Scope ${s.outline} · ${esc(s.awardedOrganization?.name || s.awardedUser?.full_name || "Awaiting contractor")}</span><h2>${esc(s.scope)}</h2>${parent ? `<a class="muted" href="#project/${p.id}">↳ ${esc(parent.scope)}</a>` : ""}</div>${status(s.status)}</div><div class="actions">${canManage && ["open", "awarded", "active"].includes(s.status) ? button("Add child scopes", "add-child", s.id) : ""}${s.status === "open" && !commission ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${
+        if (cost) projectCosts.push(cost);
+        return `<article class="panel subdivision ${s.depth ? "child-scope" : ""}" id="scope-${s.id}" data-subdivision="${s.id}"><div class="panel-heading"><div><span class="eyebrow">Scope ${s.outline} · ${esc(s.awardedOrganization?.name || s.awardedUser?.full_name || "Awaiting contractor")}</span><h2>${esc(s.scope)}</h2>${parent ? `<a class="muted" href="#project/${p.id}">↳ ${esc(parent.scope)}</a>` : ""}</div>${status(s.status)}</div><div class="actions">${canManage && ["open", "awarded", "active"].includes(s.status) ? button("Add child scopes", "add-child", s.id) : ""}${s.status === "open" && !commission ? button("Submit a bid", "bid", s.id, "primary") : ""}${active(s) && assigned ? button("Log time", "log-time", s.id) : ""}${active(s) && assigned ? button("Use materials", "consume", s.id) : ""}${s.status === "awarded" && canManage ? button("Start work", "start-work", s.id) : ""}${active(s) && canManage ? button("Complete work", "complete-work", s.id) : ""}</div>${cost ? `<div class="cost-strip"><span>Labor <strong>${money(cost.labor_cost)}</strong></span><span>Materials <strong>${money(cost.material_cost)}</strong></span></div>` : ""}${cost?.labor?.length ? `<details class="labor-details"><summary>Labor by worker</summary>${laborTable(cost.labor)}</details>` : ""}${
           commission
             ? `<h3>Bids ${bids.length ? `(${bids.length})` : ""}</h3>${
                 bids.length
@@ -348,6 +375,14 @@ export async function renderPage(c, route, part, page = 0) {
         "Delivery progress",
         `<progress class="project-progress" max="${p.subdivisions.length || 1}" value="${p.subdivisions.filter((s) => s.status === "completed").length}" aria-label="Completed work packages"></progress><p class="muted">Expand your delivery plan with child scopes. Each package has its own contractor, bids and costs.</p>`,
       ) +
+      (projectCosts.length
+        ? panel(
+            own
+              ? "Project labor & materials"
+              : "Your managed labor & materials",
+            `<div class="cost-strip"><span>Labor <strong>${money(projectCosts.reduce((n, v) => n + Number(v.labor_cost), 0))}</strong></span><span>Materials <strong>${money(projectCosts.reduce((n, v) => n + Number(v.material_cost), 0))}</strong></span></div><p class="muted">Actual costs from recorded hours at saved worker rates. Each work package is counted once.</p>`,
+          )
+        : "") +
       subHtml.join("")
     );
   }
@@ -368,15 +403,16 @@ export async function renderPage(c, route, part, page = 0) {
         ? panel(
             "Your applications",
             table(
-              ["Role", "Employer", "Status", "Actions"],
+              ["Role", "Employer", "Pay", "Status", "Actions"],
               d.rows.map((a) =>
                 row([
                   esc(a.posting.title),
                   esc(
                     a.posting.organization?.name || a.posting.poster?.full_name,
                   ),
+                  paySummary(a),
                   status(a.status),
-                  `<div class="actions">${a.status === "offered" ? button("Accept offer", "accept-offer", a.id, "primary") : ""}${["pending", "offered"].includes(a.status) ? button("Withdraw", "withdraw-application", a.id) : "—"}</div>`,
+                  `<div class="actions">${button("Pay discussion", "pay-history", a.id)}${["pending", "offered"].includes(a.status) && a.posting.status === "open" ? button("Negotiate pay", "counter-offer", a.id) : ""}${a.status === "offered" ? button("Accept offer", "accept-offer", a.id, "primary") : ""}${["pending", "offered"].includes(a.status) ? button("Withdraw", "withdraw-application", a.id) : "—"}</div>`,
                 ]),
               ),
             ),
@@ -388,7 +424,7 @@ export async function renderPage(c, route, part, page = 0) {
           );
     else
       body = d.rows.length
-        ? `<div class="cards">${d.rows.map((j) => `<article class="card"><div class="card-top"><span class="square-icon">${icon("jobs")}</span>${status(j.status)}</div><p class="eyebrow">${esc(j.organization?.name || j.poster?.full_name)}</p><h2>${esc(j.title)}</h2><p class="clamp">${esc(j.description)}</p><div class="card-footer"><span class="muted">${j.posted_by_org_id ? "Organization role" : "Personal hire"}</span>${link(view === "hiring" ? "Manage posting" : "View role", `job/${j.id}`)}</div></article>`).join("")}</div>`
+        ? `<div class="cards">${d.rows.map((j) => `<article class="card"><div class="card-top"><span class="square-icon">${icon("jobs")}</span>${status(j.status)}</div><p class="eyebrow">${esc(j.organization?.name || j.poster?.full_name)}</p><h2>${esc(j.title)}</h2><p class="pay-highlight">${payLabel(j.hourly_rate)}</p><p class="clamp">${esc(j.description)}</p><div class="card-footer"><span class="muted">${j.posted_by_org_id ? "Organization role" : "Personal hire"}</span>${link(view === "hiring" ? "Manage posting" : "View role", `job/${j.id}`)}</div></article>`).join("")}</div>`
         : empty(
             view === "hiring" ? "Build your team" : "No open roles yet",
             view === "hiring"
@@ -447,23 +483,21 @@ export async function renderPage(c, route, part, page = 0) {
       ) +
       panel(
         "About this role",
-        `<p class="preserve">${esc(j.description)}</p><div class="actions">${manage && j.status === "open" ? button("Close posting", "close-job", j.id, "danger") : ""}${!manage && !member && !applications.length && j.status === "open" ? button("Apply for this role", "apply", j.id, "primary") : ""}${!manage && applications.length ? `<p>Your application is ${status(applications[0].status)}. ${link("View applications", "jobs/applications")}</p>` : ""}${member && !manage ? '<p class="muted">You already belong to this organization.</p>' : ""}</div>`,
+        `<p class="pay-highlight">${payLabel(j.hourly_rate)} <small>Advertised pay · open to negotiation</small></p><p class="preserve">${esc(j.description)}</p><div class="actions">${manage && j.status === "open" ? button("Close posting", "close-job", j.id, "danger") : ""}${!manage && !member && !applications.length && j.status === "open" ? button("Apply for this role", "apply", j.id, "primary") : ""}${!manage && applications.length ? `<p>Your application is ${status(applications[0].status)}. ${link("View applications", "jobs/applications")}</p>` : ""}${member && !manage ? '<p class="muted">You already belong to this organization.</p>' : ""}</div>`,
       ) +
       (manage
         ? panel(
             "Applicants",
             applications.length
               ? table(
-                  ["Applicant", "Skills", "Status", "Actions"],
+                  ["Applicant", "Skills", "Pay", "Status", "Actions"],
                   applications.map((a) =>
                     row([
                       `<strong>${esc(a.applicant.full_name)}</strong><small>${money(a.applicant.hourly_rate)} / hour</small>`,
                       esc(a.applicant.skills.join(", ") || "No skills listed"),
+                      paySummary(a),
                       status(a.status),
-                      ["pending", "offered"].includes(a.status) &&
-                      j.status === "open"
-                        ? `<div class="actions">${a.status === "pending" ? button("Make offer", "offer", a.id, "primary") : ""}${button("Reject", "reject", a.id, "danger")}</div>`
-                        : "—",
+                      `<div class="actions">${button("Pay discussion", "pay-history", a.id)}${["pending", "offered"].includes(a.status) && j.status === "open" ? button(a.status === "pending" ? "Make offer" : "Revise offer", "offer", a.id, "primary") + button("Reject", "reject", a.id, "danger") : ""}</div>`,
                     ]),
                   ),
                 )
@@ -496,6 +530,7 @@ export async function renderPage(c, route, part, page = 0) {
     if (!membership) throw new Error("You do not belong to this organization.");
     d.members = await all(`/organizations/${part}/members`);
     d.organization = membership.organization;
+    d.roles = await all(`/organizations/${part}/roles`);
     const manage = c.manages(Number(part));
     const report = manage
       ? await api(
@@ -529,23 +564,51 @@ export async function renderPage(c, route, part, page = 0) {
             `<div class="actions">${button("Post a job", "job", "", "primary")}${link("Manage hiring", `org-jobs/${part}`)}${link("Assigned projects", `org-projects/${part}`)}${link("Organization bids", `org-bids/${part}`)}${link("Team reports", `time/${part}`)}${link("Shared inventory", `inventory/${part}`)}</div><p class="muted">Manage your organization’s profile, hiring, resources and project delivery from one place.</p>`,
           )
         : "") +
+      (manage
+        ? panel(
+            "Company roles & base pay",
+            d.roles.length
+              ? `<div class="cards">${d.roles.map((r) => `<article class="card"><h3>${esc(r.name)}</h3><p class="pay-highlight">${payLabel(r.hourly_rate)}</p><p class="preserve">${esc(r.description)}</p><div class="tags">${r.skills.map((skill) => `<span>${esc(skill)}</span>`).join("")}</div>${button("Edit company role", "company-role", r.id)}</article>`).join("")}</div>`
+              : empty(
+                  "Define your company roles",
+                  "Set responsibilities, required skills and base hourly pay for each role.",
+                ),
+            button("Create company role", "company-role", "", "primary"),
+          )
+        : "") +
       panel(
         "Team roster",
         table(
-          ["Member", "Role", "Joined", ""],
+          [
+            "Member",
+            "Access",
+            "Company role",
+            "Hourly pay",
+            "Joined",
+            "Actions",
+          ],
           d.members.map((m) =>
             row([
               `<strong>${esc(m.user.full_name)}</strong><small>${esc(m.user.skills.join(", "))}</small>`,
               status(m.internal_role),
+              esc(m.companyRole?.name || "Unassigned"),
+              `<strong>${payLabel(m.hourly_rate ?? m.companyRole?.hourly_rate ?? m.user.hourly_rate)}</strong><small>${m.hourly_rate != null ? "Individual agreement" : m.companyRole ? "Role base pay" : "Profile rate"}</small>`,
               dateLabel(m.joined_at),
-              membership.internal_role === "owner" &&
-              m.internal_role !== "owner"
-                ? button("Change role", "member-role", m.user_id)
-                : "—",
+              `<div class="actions">${manage ? button("Role & pay", "member-pay", m.user_id) : ""}${membership.internal_role === "owner" && m.internal_role !== "owner" ? button("Change access", "member-role", m.user_id) : ""}</div>`,
             ]),
           ),
         ),
       ) +
+      (manage && report.entries.length
+        ? panel(
+            "Labor this week",
+            laborTable(
+              report.entries,
+              (id) => d.members.find((m) => m.user_id === id)?.user.full_name,
+            ),
+            link("Detailed report", `time/${part}`),
+          )
+        : "") +
       `<div class="actions space-top">${link("View shared inventory", `inventory/${part}`)}${link("Find assigned work", `org-projects/${part}`)}</div>`
     );
   }
@@ -660,8 +723,23 @@ export async function renderPage(c, route, part, page = 0) {
         d.entries.length
           ? table(
               org
-                ? ["Date", "Member", "Work", "Hours", "Labor cost"]
-                : ["Date", "Work", "Hours", "Note", "Actions"],
+                ? [
+                    "Date",
+                    "Member",
+                    "Work",
+                    "Hours",
+                    "Hourly rate",
+                    "Labor cost",
+                  ]
+                : [
+                    "Date",
+                    "Work",
+                    "Hours",
+                    "Hourly rate",
+                    "Labor cost",
+                    "Note",
+                    "Actions",
+                  ],
               d.entries.map((e) =>
                 row(
                   org
@@ -673,12 +751,15 @@ export async function renderPage(c, route, part, page = 0) {
                             `Subdivision ${e.subdivision_id}`,
                         ),
                         esc(e.hours),
+                        money(e.hourly_rate),
                         money(e.labor_cost),
                       ]
                     : [
                         dateLabel(e.date),
                         `<strong>${esc(titles.get(e.subdivision_id) || `Subdivision ${e.subdivision_id}`)}</strong><small>${e.org_id ? esc(organizationName(c, e.org_id)) : "Independent work"}</small>`,
                         esc(e.hours),
+                        money(e.hourly_rate),
+                        money(Number(e.hours) * Number(e.hourly_rate)),
                         esc(e.note || "—"),
                         d.assignments.some(
                           (s) => s.id === e.subdivision_id && active(s),

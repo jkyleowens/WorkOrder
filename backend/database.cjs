@@ -17,12 +17,24 @@ const definitions = {
     "organizations",
     { name: D.STRING, created_by_user_id: D.INTEGER, trade_focus: D.STRING },
   ],
+  OrganizationRole: [
+    "organization_roles",
+    {
+      org_id: D.INTEGER,
+      name: D.STRING,
+      description: D.TEXT,
+      skills: D.JSONB,
+      hourly_rate: D.DECIMAL,
+    },
+  ],
   OrganizationMember: [
     "organization_members",
     {
       user_id: D.INTEGER,
       org_id: D.INTEGER,
       internal_role: D.STRING,
+      company_role_id: D.INTEGER,
+      hourly_rate: D.DECIMAL,
       joined_at: D.DATE,
     },
   ],
@@ -31,6 +43,8 @@ const definitions = {
     {
       posted_by_user_id: D.INTEGER,
       posted_by_org_id: D.INTEGER,
+      company_role_id: D.INTEGER,
+      hourly_rate: D.DECIMAL,
       title: D.STRING,
       description: D.TEXT,
       status: D.STRING,
@@ -41,6 +55,10 @@ const definitions = {
     {
       job_posting_id: D.INTEGER,
       applicant_user_id: D.INTEGER,
+      desired_rate: D.DECIMAL,
+      offered_rate: D.DECIMAL,
+      revision: D.INTEGER,
+      negotiation: D.JSONB,
       status: D.STRING,
       submitted_at: D.DATE,
     },
@@ -166,6 +184,14 @@ function createDatabase(url, options = {}) {
   for (const args of [
     ["Organization", "User", "created_by_user_id", "creator"],
     ["OrganizationMember", "User", "user_id", "user"],
+    ["OrganizationRole", "Organization", "org_id", "organization"],
+    [
+      "OrganizationMember",
+      "OrganizationRole",
+      "company_role_id",
+      "companyRole",
+    ],
+    ["JobPosting", "OrganizationRole", "company_role_id", "companyRole"],
     ["OrganizationMember", "Organization", "org_id", "organization"],
     ["JobPosting", "User", "posted_by_user_id", "poster"],
     ["JobPosting", "Organization", "posted_by_org_id", "organization"],
