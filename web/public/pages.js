@@ -67,6 +67,10 @@ const laborTable = (entries, name) => {
   );
 };
 export async function renderPage(c, route, part, page = 0) {
+  if (route === "field") {
+    location.assign("/field");
+    return "Opening field workspace…";
+  }
   c.data = {};
   const d = c.data;
   if (

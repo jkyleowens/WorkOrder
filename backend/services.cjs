@@ -11,6 +11,7 @@ class PlatformService {
     this.m = models;
     // Eligibility checks (e.g. credentials) run inside bid and award transactions.
     this.bidRules = [];
+    this.awardHooks = [];
   }
   async get(name, id, transaction, lock = false) {
     const row = await this.m[name].findByPk(id, {
@@ -664,6 +665,7 @@ class PlatformService {
         { transaction: t },
       );
       await p.update({ status: "active" }, { transaction: t });
+      for (const hook of this.awardHooks) await hook(user, s, b, t);
       return s;
     });
   }

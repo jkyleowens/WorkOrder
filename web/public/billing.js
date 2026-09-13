@@ -469,7 +469,8 @@ export async function renderBilling(c, part, page) {
       b.subdivision.scope,
       `${b.payer_name} → ${b.contractor_name}`,
       link("View project", `project/${b.project.id}`) +
-        link("Reviews & disputes", `scope-trust/${part}`),
+        link("Reviews & disputes", `scope-trust/${part}`) +
+        `<a class="btn secondary" href="/field#scope=${Number(part)}&tab=reports">Field reports & documents</a>`,
     ) +
     metrics([
       [

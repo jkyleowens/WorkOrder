@@ -352,6 +352,10 @@ const definitions = {
   ProjectSubdivision: [
     "project_subdivisions",
     {
+      planned_start: D.DATEONLY,
+      duration_days: D.INTEGER,
+      predecessor_id: D.INTEGER,
+      schedule_version: D.INTEGER,
       project_id: D.INTEGER,
       parent_subdivision_id: D.INTEGER,
       awarded_user_id: D.INTEGER,

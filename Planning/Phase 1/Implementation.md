@@ -78,6 +78,18 @@ Validation uses the existing isolated backend suite and a new browser trust work
 
 Time & reports includes an inline assignment form for up to 31 dated start/end intervals per submission, with an explicit hours-only option when clock times are unknown. Project and overview shortcuts open this workspace. The server saves the batch atomically, snapshots the applicable pay rate, attributes organization work automatically, and checks combined daily hours across all assignments under a user lock. Failed batches preserve entered values; successful batches refresh the grid, totals and entries. Migration `010-timesheet-clock-times.sql` preserves nullable clock times, with database validation that the derived duration matches hours. The grid positions and sizes blocks from saved times, opens near the first recorded start, and places overlapping entries in separate columns. Legacy hours-only entries are listed separately rather than assigned a fictitious midnight start. Editing can add clock times to legacy entries or correct existing intervals. Times are wall-clock values on the entered work date; an end time of 00:00 means the end of that day. Overnight work uses separate rows for each date. Payroll hours remain rounded to hundredths, while grid placement uses the exact entered minutes.
 
+## Release Three — work in the field
+
+Implemented in migration `011-field-work.sql`, the field API and the mobile `/field` workspace:
+
+- Offline personal and crew time recording, persistent clock-in/out, local-date overnight splitting, durable per-account queues, automatic reconnect sync and explicit conflict correction. Owner/managers can record their awarded organization's crew. Stable request keys and atomic crew batches prevent duplicate or partial sync; saved entries retain the existing effective-rate snapshots taken at sync.
+- Append-only photo daily reports with dated progress, headcount, weather, deliveries and delays. Private photo access follows the scope's crew and commissioning chain. Reports, photo metadata and document versions are included in new dispute evidence packets; resolved packets remain frozen.
+- Project/scope documents, private attachments, immutable versions, exact-content signatures and view/signature events. New awards generate signable agreements from accepted bid terms; pre-existing awards are backfilled when Documents opens. Each new version has its own signatures. Private agreements/waivers remain restricted to commercial parties, while crew can read scope instructions.
+- Calendar-day dependency schedules with earliest start, duration, a same-project finish-to-start predecessor, automatic downstream movement, project date rollup, and a crew seven-day view. Version checks reject stale edits; cycles roll back.
+- Field navigation and direct scope links from Billing. A service worker caches only the static field shell; saved assignments, active clocks and queued time are kept per account on the device. Reports, signatures and schedule edits are online operations. Time sync runs while the page is open, not as a background job after closing the browser.
+
+Validation is limited to new/changed features, as requested: the dedicated field backend and mobile browser tests cover offline week/reload/reconnect, clock-out, retry/conflict handling, crew authority, reports and packet freezing, document privacy/versioning/signatures, and dependency changes. No unrelated suites were run. This implements recorded signatures without an external signature provider, and calendar-day scheduling without working-day calendars or automatic change-order duration adjustments.
+
 ## Remaining roadmap
 
 | Objective                        | Current state                                                                    |
@@ -89,10 +101,10 @@ Time & reports includes an inline assignment form for up to 31 dated start/end i
 | License / insurance verification | Implemented; credential model restored and tests pass                            |
 | Completed-work reputation        | Implemented; completed-scope review tests pass                                   |
 | Disputes / evidence packets      | Implemented; settlement and evidence-packet tests pass                           |
-| Offline crew time clock          | Not implemented; existing interactive time grid retained                         |
-| Photo daily reports              | Not implemented                                                                  |
-| Documents / signatures           | Application print/export only; document storage and signatures remain            |
-| Dependency schedule              | Change-day deltas only; scheduling remains                                       |
+| Offline crew time clock          | Implemented; offline queue, crew batches and conflict review                         |
+| Photo daily reports              | Implemented; private photos, dated records and dispute evidence                                                                  |
+| Documents / signatures           | Implemented; immutable versions, award agreements and recorded signatures            |
+| Dependency schedule              | Implemented; dependency movement, date rollup and crew schedule                                       |
 | Purchase orders / reservations   | Not implemented                                                                  |
 | Permanent inventory ledger       | Existing inventory movement retained; costing/period-close work remains          |
 | Accounting / payroll / delivery  | Application CSV only; integrations and delivery remain                           |

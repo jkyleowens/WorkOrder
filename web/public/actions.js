@@ -52,6 +52,7 @@ export async function action(c, name, id) {
       "Your saved work will be here when you return.",
       async () => {
         await write("/auth/logout");
+        localStorage.removeItem("workorder:field:identity");
         location.assign("/login");
       },
       "Sign out",

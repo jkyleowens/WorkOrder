@@ -1,0 +1,119 @@
+.field-shell {
+  max-width: 1100px;
+  margin: auto;
+  padding: 24px;
+}
+.field-shell header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.field-shell nav,
+.field-shell .actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.field-shell .btn {
+  min-height: 44px;
+}
+.field-shell .panel {
+  padding: 20px;
+  margin: 16px 0;
+}
+.field-shell form {
+  display: grid;
+  gap: 14px;
+}
+.field-shell fieldset {
+  border: 1px solid #c9ced2;
+  padding: 12px;
+}
+.field-shell fieldset label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+}
+.field-shell fieldset input {
+  width: auto;
+}
+.field-shell .field-status {
+  padding: 12px;
+  background: #e6edf3;
+}
+.field-shell .field-error {
+  color: #912f22;
+  white-space: pre-wrap;
+}
+.field-shell .field-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.field-photos img {
+  width: 200px;
+  max-width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.field-shell pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.field-shell .schedule-row {
+  padding: 16px 0;
+  border-bottom: 1px solid #d1d6da;
+}
+.field-shell .schedule-row strong {
+  display: block;
+}
+.field-shell .queue-item {
+  border-left: 4px solid #5980a6;
+  padding: 12px;
+  margin: 12px 0;
+}
+.field-shell .clock-active {
+  font-size: 1.2rem;
+  padding: 16px;
+  background: #e8efe5;
+}
+@media (max-width: 600px) {
+  .field-shell {
+    padding: 16px;
+  }
+  .field-shell .panel {
+    padding: 14px;
+  }
+  .field-shell h1 {
+    font-size: 32px;
+  }
+  .field-shell nav .btn {
+    flex: 1;
+  }
+  .field-shell input,
+  .field-shell select,
+  .field-shell textarea {
+    font-size: 16px;
+    max-width: 100%;
+  }
+  .field-shell .actions .btn {
+    flex: 1;
+  }
+}
+@media print {
+  .field-shell header,
+  .field-shell nav,
+  .field-shell button,
+  .field-status {
+    display: none;
+  }
+  .field-shell {
+    max-width: none;
+  }
+}

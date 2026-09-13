@@ -1,3 +1,4 @@
+const { FieldService } = require("./field.cjs");
 const { BillingService, fingerprint } = require("./billing.cjs");
 const { FundingService } = require("./funding.cjs");
 const { FileService, FILE_TYPES } = require("./files.cjs");
@@ -62,6 +63,14 @@ function createApp(
   );
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "../web/views"));
+  app.get("/field", (req, res) =>
+    res.sendFile(path.join(__dirname, "../web/public/field.html")),
+  );
+  app.get("/field-sw.js", (req, res) =>
+    res
+      .set("Cache-Control", "no-cache")
+      .sendFile(path.join(__dirname, "../web/public/field-sw.js")),
+  );
   app.use("/assets", express.static(path.join(__dirname, "../web/public")));
   const billing = new BillingService(service);
   const funding = new FundingService(service, billing, paymentProvider, {
@@ -70,6 +79,7 @@ function createApp(
   });
   const files = new FileService(service);
   const trust = new TrustService(service, billing, funding, files);
+  const field = new FieldService(service, billing, files, trust);
   // Stripe signs the exact bytes it sends, so this route must read the raw body before JSON parsing.
   app.post(
     "/api/webhooks/stripe",
@@ -604,7 +614,9 @@ function createApp(
     service.orgDashboard(req.user.id, param(req), req.query),
   );
   const origin = (req) => `${req.protocol}://${req.get("host")}`;
-  send("get", "/admin/payout-holding", (req) => funding.holdingReport(req.user.id));
+  send("get", "/admin/payout-holding", (req) =>
+    funding.holdingReport(req.user.id),
+  );
   send("get", "/payment-accounts", async (req) => ({
     configured: funding.configured,
     live: !!paymentProvider?.live,
@@ -688,6 +700,56 @@ function createApp(
       })
       .send(file.data);
   });
+  send("get", "/field", (req) => field.bootstrap(req.user.id));
+  send(
+    "post",
+    "/field/time",
+    (req) => field.syncTime(req.user.id, req.body),
+    201,
+  );
+  send("get", "/subdivisions/:id/reports", (req) =>
+    field.reports(req.user.id, param(req)),
+  );
+  send(
+    "post",
+    "/subdivisions/:id/reports",
+    (req) => field.report(req.user.id, param(req), req.body),
+    201,
+  );
+  send("get", "/projects/:id/schedule", (req) =>
+    field.schedule(req.user.id, param(req)),
+  );
+  send("put", "/subdivisions/:id/schedule", (req) =>
+    field.plan(req.user.id, param(req), req.body),
+  );
+  send("get", "/projects/:id/documents", (req) =>
+    field.documents(req.user.id, param(req)),
+  );
+  send(
+    "post",
+    "/projects/:id/documents",
+    (req) => field.addDocument(req.user.id, param(req), null, req.body),
+    201,
+  );
+  send("get", "/subdivisions/:id/documents", async (req) => {
+    const s = await service.get("ProjectSubdivision", param(req));
+    return field.documents(req.user.id, s.project_id, s.id);
+  });
+  send(
+    "post",
+    "/subdivisions/:id/documents",
+    async (req) => {
+      const s = await service.get("ProjectSubdivision", param(req));
+      return field.addDocument(req.user.id, s.project_id, s.id, req.body);
+    },
+    201,
+  );
+  send("get", "/documents/:id", (req) =>
+    field.document(req.user.id, param(req)),
+  );
+  send("post", "/documents/:id/sign", (req) =>
+    field.document(req.user.id, param(req), req.body),
+  );
   send("get", "/credentials", (req) =>
     trust.credentials(req.user.id, req.query),
   );
