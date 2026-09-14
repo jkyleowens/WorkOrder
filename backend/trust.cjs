@@ -111,7 +111,9 @@ class TrustService {
     this.m = platform.m;
     // Field records (Release Three) contribute sections to the evidence packet.
     this.packetSources = [];
-    platform.bidRules.push((ctx, t) => this.bidRule(ctx, t));
+    // Credentials are informational, not a bidding gate: a client sees each
+    // bidder's standing (via standing()/credentialCards on the bid) and decides
+    // who to award. No bidRules hook is registered here.
     funding.holdSources.push((scope, t) => this.heldOn(scope, t));
     files.rules.push((user, fileId) => this.canViewFile(user, fileId));
   }
@@ -292,22 +294,6 @@ class TrustService {
       required,
     };
   }
-  async bidRule({ userId, orgId, s, phase }, t) {
-    const st = await this.standing(userId, orgId, s.required_credentials || [], t);
-    const bidding = phase === "bid";
-    if (st.expired.length)
-      check(
-        false,
-        409,
-        `${bidding ? "Your" : "The bidder’s"} ${st.expired[0].label.toLowerCase()} expired on ${st.expired[0].expires_on}. ${bidding ? "Add a current certificate before bidding." : "The award is blocked until they add a current certificate."}`,
-      );
-    if (st.missing.length)
-      check(
-        false,
-        409,
-        `This work package requires ${st.missing.map((k) => KIND_LABELS[k].toLowerCase()).join(", ")}. ${bidding ? "Add a current credential before bidding." : "The bidder has not provided a current one."}`,
-      );
-  }
   async setRequirements(user, scopeId, input) {
     const d = schemas.requirements.parse(input);
     return this.db.transaction(async (t) => {
@@ -387,6 +373,9 @@ class TrustService {
       name: org.name,
       trade_focus: org.trade_focus,
       organization_types: org.organization_types,
+      member_count: await this.m.OrganizationMember.count({
+        where: { org_id: orgId },
+      }),
       credentials: await this.publicCredentials(null, orgId),
       reputation: await this.reputation(null, orgId),
     };

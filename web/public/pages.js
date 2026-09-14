@@ -1,4 +1,5 @@
-import { renderTrust, reputationSummary, standingSummary } from "./trust.js";
+import { renderTrust, reputationSummary } from "./trust.js";
+import { renderField } from "./field-console.js";
 import { timeEntryForm } from "./time-entry.js";
 import {
   renderBilling,
@@ -67,10 +68,7 @@ const laborTable = (entries, name) => {
   );
 };
 export async function renderPage(c, route, part, page = 0) {
-  if (route === "field") {
-    location.assign("/field");
-    return "Opening field workspace…";
-  }
+  if (route === "field") return renderField(c);
   c.data = {};
   const d = c.data;
   if (
@@ -456,20 +454,22 @@ export async function renderPage(c, route, part, page = 0) {
             ? `<h3>Bids ${bids.length ? `(${bids.length})` : ""}</h3>${
                 bids.length
                   ? table(
-                      ["Bidder", "Amount", "Status", ""],
+                      ["Bidder", "Amount", "Status", "Actions"],
                       bids.map((b) =>
                         row([
                           link(
                             b.organization?.name || b.user?.full_name,
                             `${b.bidding_org_id ? "trust-organization" : "trust-profile"}/${b.bidding_org_id || b.bidding_user_id}`,
                           ) +
-                            standingSummary(b.standing) +
-                            reputationSummary(b.reputation),
+                            reputationSummary(b.reputation) +
+                            (s.required_credentials?.length &&
+                            (b.standing.missing.length ||
+                              b.standing.expired.length)
+                              ? `<small class="muted">Missing a credential you're looking for — check before awarding.</small>`
+                              : ""),
                           money(b.amount),
                           status(b.status),
-                          b.status === "pending" && s.status === "open"
-                            ? button("Award bid", "award", b.id, "primary")
-                            : "—",
+                          `<div class="actions">${button("View bidder", b.bidding_org_id ? "trust-view-org" : "trust-view-user", b.bidding_org_id || b.bidding_user_id)}${b.status === "pending" && s.status === "open" ? button("Award bid", "award", b.id, "primary") : ""}</div>`,
                         ]),
                       ),
                     )

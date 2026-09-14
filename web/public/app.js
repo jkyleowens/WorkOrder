@@ -1,5 +1,6 @@
 import { mountTimeEntry } from "./time-entry.js";
 import { mountTimeGrid } from "./time-grid.js";
+import { mountField, syncField } from "./field-console.js";
 import { api, all, write, refreshCsrf } from "./api.js";
 import {
   esc,
@@ -128,7 +129,7 @@ const mobileTabs = [
   ["inbox", "Inbox", "inbox"],
 ];
 const navLink = (key, label, i, selected) =>
-  `<a href="${key === "field" ? "/field" : `#${key}`}" aria-label="${label}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}${selected === key ? '<span class="nav-dot"></span>' : ""}</a>`;
+  `<a href="#${key}" aria-label="${label}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}${selected === key ? '<span class="nav-dot"></span>' : ""}</a>`;
 const navGroupsHtml = (selected) =>
   navGroups
     .map(
@@ -146,7 +147,7 @@ function shell(route) {
         : route === "organization"
           ? "organizations"
           : route;
-  root.innerHTML = `<div class="console"><aside class="sidebar">${brand}${navGroupsHtml(selected)}<div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(navigation.find(([key]) => key === selected)?.[1] || "Overview")}</span><div class="topbar-right"><a class="inbox-shortcut" href="#inbox" aria-label="Open inbox${c.unread ? `, ${c.unread} unread` : ""}">${icon("inbox")}${c.unread ? `<span class="unread-indicator"></span>` : ""}</a><span class="context-pill"><i></i>${esc(c.org?.name || "Connected workspace")}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div><nav class="mobile-tabbar" aria-label="Primary">${mobileTabs.map(([key, label, i]) => `<a class="mobile-tab" href="${key === "field" ? "/field" : `#${key}`}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}</a>`).join("")}<button type="button" class="mobile-tab" data-nav-toggle="more" aria-haspopup="dialog" aria-expanded="false">${icon("more")}<span>More</span></button></nav><div class="more-sheet"><div class="more-backdrop" data-nav-close></div><div class="more-panel" role="dialog" aria-modal="true" aria-label="More navigation"><div class="more-panel-head"><p class="eyebrow">WorkOrder</p><button type="button" class="close" data-nav-close aria-label="Close">${icon("close")}</button></div>${navGroupsHtml(selected)}<button type="button" class="more-signout" data-action="logout">${icon("logout")}<span>Sign out</span></button></div></div></div>`;
+  root.innerHTML = `<div class="console"><aside class="sidebar">${brand}${navGroupsHtml(selected)}<div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(navigation.find(([key]) => key === selected)?.[1] || "Overview")}</span><div class="topbar-right"><a class="inbox-shortcut" href="#inbox" aria-label="Open inbox${c.unread ? `, ${c.unread} unread` : ""}">${icon("inbox")}${c.unread ? `<span class="unread-indicator"></span>` : ""}</a><span class="context-pill"><i></i>${esc(c.org?.name || "Connected workspace")}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div><nav class="mobile-tabbar" aria-label="Primary">${mobileTabs.map(([key, label, i]) => `<a class="mobile-tab" href="#${key}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}</a>`).join("")}<button type="button" class="mobile-tab" data-nav-toggle="more" aria-haspopup="dialog" aria-expanded="false">${icon("more")}<span>More</span></button></nav><div class="more-sheet"><div class="more-backdrop" data-nav-close></div><div class="more-panel" role="dialog" aria-modal="true" aria-label="More navigation"><div class="more-panel-head"><p class="eyebrow">WorkOrder</p><button type="button" class="close" data-nav-close aria-label="Close">${icon("close")}</button></div>${navGroupsHtml(selected)}<button type="button" class="more-signout" data-action="logout">${icon("logout")}<span>Sign out</span></button></div></div></div>`;
 }
 c.reload = async () => {
   cleanupTimeGrid?.();
@@ -195,6 +196,7 @@ c.reload = async () => {
     main.innerHTML = html;
     cleanupTimeGrid = mountTimeGrid(main, c.data, c.range);
     mountTimeEntry(main, c);
+    mountField(main, c);
     main.setAttribute("aria-busy", "false");
     if (!document.querySelector("#modal").open)
       main.querySelector("h1")?.focus({ preventScroll: true });
@@ -217,6 +219,29 @@ c.reload = async () => {
     if (current !== generation) return;
     if (error.status === 401)
       return auth(false, "Your session ended. Sign in to continue.");
+    // Offline with a session already established: keep working from cached
+    // data instead of hard-failing every route. Routes with no offline
+    // fallback of their own (most of them — they need live data) will throw
+    // again below and fall through to the normal error view.
+    if (c.user && (!navigator.onLine || !error.status)) {
+      try {
+        shell(route);
+        c.currentWeek = week();
+        const view = { ...c };
+        const html = await renderPage(view, route, part, page);
+        if (current !== generation) return;
+        c.data = view.data;
+        const main = document.querySelector("#main");
+        main.innerHTML = html;
+        cleanupTimeGrid = mountTimeGrid(main, c.data, c.range);
+        mountTimeEntry(main, c);
+        mountField(main, c);
+        main.setAttribute("aria-busy", "false");
+        return;
+      } catch {
+        // No offline fallback for this route — show the error view below.
+      }
+    }
     if (!c.user) {
       root.innerHTML = `<main id="main" class="boot">${brand}<h1>We couldn’t open WorkOrder</h1><p role="alert">${esc(error.message)}</p>${button("Try again", "retry", "", "primary")}</main>`;
     } else {
@@ -283,6 +308,12 @@ document.addEventListener("click", async (e) => {
 });
 window.addEventListener("hashchange", () => {
   if (c.user) c.reload();
+});
+window.addEventListener("online", () => {
+  if (!c.user) return;
+  syncField(c.user.id)
+    .catch(() => {})
+    .then(() => c.reload());
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && document.querySelector(".more-sheet.open"))

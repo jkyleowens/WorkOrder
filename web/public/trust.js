@@ -13,6 +13,7 @@ import {
   toast,
   dateLabel,
   money,
+  typeBadges,
 } from "./ui.js";
 const kinds = [
   ["trade_license", "Trade license"],
@@ -69,19 +70,24 @@ export function reputation(r) {
       : "<p>No completed-work reviews yet.</p>",
   );
 }
+// Shared by the full trust-profile page and the quick bidder-review modal:
+// what someone bidding on a scope actually is, before the client awards it.
+function profileSummary(p, isOrg) {
+  return isOrg
+    ? `<p class="muted">${esc(p.trade_focus || "Organization")}${p.member_count ? ` · ${p.member_count} member${p.member_count === 1 ? "" : "s"}` : ""}</p>${typeBadges(p.organization_types)}`
+    : `<p class="muted">${money(p.hourly_rate)} / hour · ${esc(p.availability_status || "Availability not set")}</p><div class="tags">${p.skills?.length ? p.skills.map((s) => `<span>${esc(s)}</span>`).join("") : "<p>No skills listed.</p>"}</div>`;
+}
 export async function renderTrust(c, route, part) {
   if (route === "trust-profile" || route === "trust-organization") {
-    const p = await api(
-      route === "trust-profile"
-        ? `/users/${part}`
-        : `/organizations/${part}/profile`,
-    );
+    const isOrg = route === "trust-organization";
+    const p = await api(isOrg ? `/organizations/${part}/profile` : `/users/${part}`);
     return (
       heading(
         "Trust & verification",
         p.full_name || p.name,
         "Credentials and reviews from completed scopes",
       ) +
+      panel(isOrg ? "Company details" : "Profile", profileSummary(p, isOrg)) +
       credentialCards(p.credentials) +
       reputation(p.reputation)
     );
@@ -196,6 +202,18 @@ export async function renderTrust(c, route, part) {
     );
   }
 }
+// Quick read of a bidder's profile, credentials, and reputation without
+// leaving the project — this is how a client decides who to award, in
+// place of the platform blocking a bid over missing credentials.
+async function bidderModal(kind, id) {
+  const isOrg = kind === "org";
+  const p = await api(isOrg ? `/organizations/${id}/profile` : `/users/${id}`);
+  modal(
+    p.full_name || p.name,
+    profileSummary(p, isOrg) + reputation(p.reputation) + credentialCards(p.credentials),
+    null,
+  );
+}
 export async function trustAction(c, name, id) {
   const done = async (path, body = {}, method = "POST") => {
     const r = await write(path, body, method);
@@ -206,6 +224,8 @@ export async function trustAction(c, name, id) {
         : "Changes saved",
     );
   };
+  if (name === "trust-view-user") return bidderModal("user", id);
+  if (name === "trust-view-org") return bidderModal("org", id);
   if (name === "trust-add")
     return modal(
       "Add credential",
@@ -424,11 +444,4 @@ export async function trustAction(c, name, id) {
 
 export function reputationSummary(r) {
   return `<p>${r?.count ? `${esc(r.overall)} / 5 · ${r.count} completed scopes · USD ${money(r.value)} contract value` : "No completed-work reviews yet."}</p>`;
-}
-
-export function standingSummary(s) {
-  if (!s) return "";
-  const labels = (values) =>
-    values.map((k) => kinds.find(([key]) => key === k)?.[1] || k).join(", ");
-  return `<small>${s.verified.length ? `Verified: ${esc(labels(s.verified))}. ` : ""}${s.pending.length ? `Pending verification: ${esc(labels(s.pending))}. ` : ""}${s.expired.map((x) => `${esc(x.label)} expired ${esc(x.expires_on)}. `).join("")}${s.missing.length ? `Missing required credentials: ${esc(labels(s.missing))}.` : ""}</small>`;
 }

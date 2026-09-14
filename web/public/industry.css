@@ -1561,3 +1561,128 @@ dialog {
     padding: 14px;
   }
 }
+
+/* ---------- Density pass: the console and field workspace are used all day,
+   in the office and on site — tighten the spacious defaults everywhere
+   except the marketing page and the auth screen, which stay full-size.
+   Interactive targets stay at 44px+; only whitespace and type shrink. ---------- */
+h1 {
+  font-size: clamp(26px, 2.4vw, 34px);
+  margin-bottom: 6px;
+}
+h2 {
+  font-size: 17px;
+  margin-bottom: 8px;
+}
+#main:not(.auth-layout):not(.boot) {
+  padding: 22px 28px 28px;
+}
+.topbar {
+  height: 56px;
+}
+.sidebar {
+  padding: 20px 16px 14px;
+}
+.sidebar .brand {
+  margin-bottom: 22px;
+}
+.page-heading {
+  margin-bottom: 18px;
+}
+.subtitle {
+  font-size: 13px;
+}
+.welcome-band {
+  padding: 18px 22px;
+  margin-bottom: 16px;
+}
+.welcome-band h2 {
+  font-size: 24px;
+}
+.stats {
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat {
+  padding: 13px 15px;
+}
+.stat > strong {
+  font-size: 25px;
+  margin: 5px 0;
+}
+.columns {
+  gap: 16px;
+}
+.panel {
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.panel-heading {
+  margin-bottom: 12px;
+}
+.panel-heading h2 {
+  font-size: 18px;
+}
+.cards {
+  gap: 12px;
+}
+.card {
+  padding: 16px;
+}
+.card h2 {
+  font-size: 19px;
+}
+.card-footer {
+  padding-top: 14px;
+}
+.list-row {
+  padding: 11px 0;
+}
+.tabs {
+  margin-bottom: 18px;
+}
+.tabs a {
+  padding-bottom: 10px;
+}
+td {
+  padding: 11px 13px;
+}
+th {
+  padding: 10px 13px;
+}
+.cost-strip {
+  padding: 11px 0;
+  margin-bottom: 12px;
+}
+.setup-progress {
+  margin-bottom: 12px;
+}
+.setup-step {
+  padding: 10px 0;
+  gap: 12px;
+}
+dialog form {
+  padding: 20px;
+}
+.dialog-heading {
+  margin-bottom: 18px;
+}
+.workspace-footer {
+  padding: 12px 28px;
+}
+.field-shell-inner {
+  padding: 18px;
+}
+.field-shell .panel {
+  padding: 16px;
+  margin: 12px 0;
+}
+@media (max-width: 800px) {
+  #main:not(.auth-layout):not(.boot) {
+    padding: 18px 20px 96px;
+  }
+  .welcome-band,
+  .panel {
+    padding: 15px;
+  }
+}

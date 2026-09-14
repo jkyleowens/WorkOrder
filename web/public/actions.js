@@ -1,5 +1,6 @@
 import { trustAction } from "./trust.js";
 import { billingAction } from "./billing.js";
+import { fieldAction } from "./field-console.js";
 import { api, all, write } from "./api.js";
 import {
   typeFields,
@@ -28,6 +29,7 @@ export async function action(c, name, id) {
   id = Number(id) || undefined;
   if (name.startsWith("trust-")) return trustAction(c, name, id);
   if (name.startsWith("billing-")) return billingAction(c, name, id);
+  if (name.startsWith("field-")) return fieldAction(c, name, id);
   const done = async (fn, message = "Changes saved") => {
     await fn();
     toast(message);

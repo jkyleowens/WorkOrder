@@ -9,7 +9,9 @@ class PlatformService {
   constructor({ db, models }) {
     this.db = db;
     this.m = models;
-    // Eligibility checks (e.g. credentials) run inside bid and award transactions.
+    // Extension point for other services to gate bidding/awarding inside the
+    // same transaction. Nothing is registered by default: credentials, for
+    // example, are shown to the client rather than enforced here.
     this.bidRules = [];
     this.awardHooks = [];
   }
