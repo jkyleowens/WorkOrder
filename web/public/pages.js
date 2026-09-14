@@ -479,6 +479,9 @@ export async function renderPage(c, route, part, page = 0) {
         }</article>`;
       }),
     );
+    const showExplainer =
+      p.subdivisions.length > 1 &&
+      localStorage.getItem("workorder:dismissed:scope-explainer") !== "1";
     return (
       `<a class="back" href="#projects">← Projects</a>` +
       heading(
@@ -487,6 +490,9 @@ export async function renderPage(c, route, part, page = 0) {
         p.description || "Project scope and execution",
         status(p.status),
       ) +
+      (showExplainer
+        ? `<div class="billing-notice"><span class="square-icon">${icon("projects")}</span><div class="grow"><strong>Each scope is bid, awarded, worked, and paid on its own.</strong><p>Child scopes (1.1, 1.2…) roll their hours and payments up into the parent scope above them.</p></div><button type="button" class="close" data-dismiss="scope-explainer" aria-label="Dismiss this note">×</button></div>`
+        : "") +
       `<div class="actions space-bottom">${own && p.status === "open" ? button("Edit subdivisions", "subdivide", p.id) + button("Cancel project", "cancel-project", p.id, "danger") : ""}${commercial.length ? link("Lien waiver chain", `waivers/${p.id}`) : ""}</div>` +
       stats([
         ["Work packages", p.subdivisions.length, "Across all levels"],

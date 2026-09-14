@@ -238,6 +238,10 @@ function setMoreOpen(open) {
   if (!sheet) return;
   sheet.classList.toggle("open", open);
   tab?.setAttribute("aria-expanded", String(open));
+  // Keep keyboard and screen-reader focus out of the content the backdrop
+  // covers while the sheet is open; restore it on close before refocusing.
+  document.querySelector(".workspace")?.toggleAttribute("inert", open);
+  document.querySelector(".mobile-tabbar")?.toggleAttribute("inert", open);
   if (open) sheet.querySelector("a, button:not(.close)")?.focus();
   else tab?.focus();
 }
@@ -258,6 +262,12 @@ document.addEventListener("click", async (e) => {
     return;
   }
   if (e.target.closest(".more-panel a")) setMoreOpen(false);
+  const dismiss = e.target.closest("[data-dismiss]");
+  if (dismiss) {
+    localStorage.setItem(`workorder:dismissed:${dismiss.dataset.dismiss}`, "1");
+    dismiss.closest(".billing-notice")?.remove();
+    return;
+  }
   const target = e.target.closest("[data-action]");
   if (!target || actionBusy) return;
   actionBusy = true;

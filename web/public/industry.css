@@ -238,6 +238,10 @@ textarea:focus {
   border-color: var(--steel);
   box-shadow: 0 0 0 2px #5980a620;
 }
+input::placeholder,
+textarea::placeholder {
+  color: #6b6f72;
+}
 .panel,
 .card,
 .stat,
@@ -1283,6 +1287,18 @@ dialog {
   position: sticky;
   top: 0;
   z-index: 10;
+}
+/* Anchor-jump targets: keep headings clear of the sticky nav above them. */
+#capabilities,
+#how-it-works,
+#who-its-for,
+#pricing {
+  scroll-margin-top: 92px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.site-nav) {
+    scroll-behavior: smooth;
+  }
 }
 .site-nav .brand {
   font-size: 22px;
