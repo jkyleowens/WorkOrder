@@ -434,7 +434,7 @@ function createApp(
   send("get", "/projects", (req) =>
     m.Project.findAll({
       where: { status: { [Op.in]: ["open", "active"] } },
-      include: [userInclude("client")],
+      include: [userInclude("client"), orgInclude("clientOrganization")],
       ...page(req),
       order: [["id", "DESC"]],
     }),
@@ -442,7 +442,7 @@ function createApp(
   send("get", "/me/projects", (req) =>
     m.Project.findAll({
       where: { client_user_id: req.user.id },
-      include: [userInclude("client")],
+      include: [userInclude("client"), orgInclude("clientOrganization")],
       ...page(req),
       order: [["id", "DESC"]],
     }),

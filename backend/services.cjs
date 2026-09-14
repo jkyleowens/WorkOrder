@@ -449,10 +449,16 @@ class PlatformService {
     });
   }
   async postProject(user, input) {
-    const { subdivisions, ...d } = schemas.project.parse(input);
+    const { subdivisions, org_id, ...d } = schemas.project.parse(input);
     return this.db.transaction(async (t) => {
+      if (org_id) await this.member(user, org_id, t, true);
       const p = await this.m.Project.create(
-        { ...d, client_user_id: user, status: "open" },
+        {
+          ...d,
+          client_user_id: user,
+          client_org_id: org_id || null,
+          status: "open",
+        },
         { transaction: t },
       );
       await this.m.ProjectSubdivision.bulkCreate(

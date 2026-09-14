@@ -129,8 +129,8 @@ export async function action(c, name, id) {
       () => write("/notifications/read-all", {}, "PATCH"),
       "All notifications marked as read",
     );
-  if (name === "organization")
-    return modal(
+  const createOrganizationModal = (note) =>
+    modal(
       "Create an organization",
       field(
         "Organization name",
@@ -141,7 +141,7 @@ export async function action(c, name, id) {
       ) +
         field("Trade or focus", "trade_focus", "text", "", 'maxlength="160"') +
         typeFields() +
-        '<p class="hint">You’ll become the owner. Post a role to invite people to apply and join.</p>',
+        `<p class="hint">${esc(note || "You’ll become the owner. Post a role to invite people to apply and join.")}</p>`,
       (v) =>
         done(
           () => write("/organizations", typeValues(v)),
@@ -149,6 +149,7 @@ export async function action(c, name, id) {
         ),
       "Create organization",
     );
+  if (name === "organization") return createOrganizationModal();
   if (name === "edit-organization")
     return modal(
       "Organization settings",
@@ -228,7 +229,8 @@ export async function action(c, name, id) {
   if (name === "project")
     return modal(
       "Post a project",
-      field("Project title", "title", "text", "", 'required maxlength="200"') +
+      actor() +
+        field("Project title", "title", "text", "", 'required maxlength="200"') +
         textarea("Description", "description", "", 'maxlength="10000"') +
         textarea(
           "Subdivisions (one scope per line, optional)",
@@ -236,7 +238,7 @@ export async function action(c, name, id) {
           "",
           'maxlength="20000"',
         ) +
-        '<p class="hint">Leave subdivisions blank to post the project as one piece of work. You’ll post as the client from your personal account.</p>',
+        '<p class="hint">Leave subdivisions blank to post the project as one piece of work.</p>',
       async (v) => {
         const scopes = v.subdivisions
           .split("\n")
@@ -246,6 +248,7 @@ export async function action(c, name, id) {
           title: v.title,
           description: v.description,
           ...(scopes.length ? { subdivisions: scopes } : {}),
+          ...orgBody(v),
         });
         toast("Project posted");
         c.navigate(`project/${p.id}`);
@@ -285,21 +288,31 @@ export async function action(c, name, id) {
       () => done(() => write(`/projects/${id}/cancel`), "Project cancelled"),
       "Cancel project",
     );
-  if (name === "bid")
+  if (name === "bid") {
+    const orgs = c.memberships.filter((m) => c.manages(m.org_id));
+    if (!orgs.length)
+      return createOrganizationModal(
+        "Bids go through an organization — even solo work. This can just be you. Create one, then submit your bid again.",
+      );
     return modal(
       "Submit a bid",
-      actor() + field("Bid amount", "amount", "number", "", positive),
+      select(
+        "Bidding as",
+        "org_id",
+        orgs.map((m) => [m.org_id, m.organization.name]),
+      ) + field("Bid amount", "amount", "number", "", positive),
       (v) =>
         done(
           () =>
             write(`/subdivisions/${id}/bids`, {
               amount: Number(v.amount),
-              ...orgBody(v),
+              org_id: Number(v.org_id),
             }),
           "Bid submitted",
         ),
       "Submit bid",
     );
+  }
   if (name === "award")
     return confirm(
       "Award this bid?",

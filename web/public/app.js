@@ -87,21 +87,17 @@ function auth(register = location.pathname === "/register", message = "") {
     }
   };
 }
+// Field work, billing and inventory live under each organization now (see
+// the organization page's control panel) rather than the main sidebar, and
+// trust & verification lives under My profile — this keeps the main nav to
+// what applies everywhere, regardless of which org a scope belongs to.
 const navGroups = [
   [
     "Work",
     [
       ["overview", "Overview", "overview"],
-      ["field", "Field work", "time"],
       ["projects", "Projects", "projects"],
       ["time", "Time & reports", "time"],
-    ],
-  ],
-  [
-    "Money & materials",
-    [
-      ["billing", "Billing", "billing"],
-      ["inventory", "Inventory", "inventory"],
     ],
   ],
   [
@@ -113,15 +109,18 @@ const navGroups = [
       ["people", "People & skills", "people"],
     ],
   ],
-  [
-    "Account",
-    [
-      ["profile", "My profile", "profile"],
-      ["credentials", "Trust & verification", "trust"],
-    ],
-  ],
+  ["Account", [["profile", "My profile", "profile"]]],
 ];
 const navigation = navGroups.flatMap(([, items]) => items);
+// Routes reached only through an organization or a profile page, not the
+// main nav — kept here so the breadcrumb still names them correctly.
+const routeLabels = Object.fromEntries([
+  ...navigation.map(([key, label]) => [key, label]),
+  ["field", "Field work"],
+  ["billing", "Billing"],
+  ["inventory", "Inventory"],
+  ["credentials", "Trust & verification"],
+]);
 const mobileTabs = [
   ["overview", "Overview", "overview"],
   ["field", "Field", "time"],
@@ -147,7 +146,7 @@ function shell(route) {
         : route === "organization"
           ? "organizations"
           : route;
-  root.innerHTML = `<div class="console"><aside class="sidebar">${brand}${navGroupsHtml(selected)}<div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(navigation.find(([key]) => key === selected)?.[1] || "Overview")}</span><div class="topbar-right"><a class="inbox-shortcut" href="#inbox" aria-label="Open inbox${c.unread ? `, ${c.unread} unread` : ""}">${icon("inbox")}${c.unread ? `<span class="unread-indicator"></span>` : ""}</a><span class="context-pill"><i></i>${esc(c.org?.name || "Connected workspace")}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div><nav class="mobile-tabbar" aria-label="Primary">${mobileTabs.map(([key, label, i]) => `<a class="mobile-tab" href="#${key}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}</a>`).join("")}<button type="button" class="mobile-tab" data-nav-toggle="more" aria-haspopup="dialog" aria-expanded="false">${icon("more")}<span>More</span></button></nav><div class="more-sheet"><div class="more-backdrop" data-nav-close></div><div class="more-panel" role="dialog" aria-modal="true" aria-label="More navigation"><div class="more-panel-head"><p class="eyebrow">WorkOrder</p><button type="button" class="close" data-nav-close aria-label="Close">${icon("close")}</button></div>${navGroupsHtml(selected)}<button type="button" class="more-signout" data-action="logout">${icon("logout")}<span>Sign out</span></button></div></div></div>`;
+  root.innerHTML = `<div class="console"><aside class="sidebar">${brand}${navGroupsHtml(selected)}<div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(routeLabels[selected] || "Overview")}</span><div class="topbar-right"><a class="inbox-shortcut" href="#inbox" aria-label="Open inbox${c.unread ? `, ${c.unread} unread` : ""}">${icon("inbox")}${c.unread ? `<span class="unread-indicator"></span>` : ""}</a><span class="context-pill"><i></i>${esc(c.org?.name || "Connected workspace")}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div><nav class="mobile-tabbar" aria-label="Primary">${mobileTabs.map(([key, label, i]) => `<a class="mobile-tab" href="#${key}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}</a>`).join("")}<button type="button" class="mobile-tab" data-nav-toggle="more" aria-haspopup="dialog" aria-expanded="false">${icon("more")}<span>More</span></button></nav><div class="more-sheet"><div class="more-backdrop" data-nav-close></div><div class="more-panel" role="dialog" aria-modal="true" aria-label="More navigation"><div class="more-panel-head"><p class="eyebrow">WorkOrder</p><button type="button" class="close" data-nav-close aria-label="Close">${icon("close")}</button></div>${navGroupsHtml(selected)}<button type="button" class="more-signout" data-action="logout">${icon("logout")}<span>Sign out</span></button></div></div></div>`;
 }
 c.reload = async () => {
   cleanupTimeGrid?.();
@@ -176,6 +175,10 @@ c.reload = async () => {
     c.unread = unread.count;
     c.user = me.user;
     c.memberships = memberships;
+    // Bidding and inventory now always go through an organization (even a
+    // solo one) rather than offering a separate personal path — this is the
+    // org a route falls back to when none is given explicitly in the URL.
+    c.primaryOrg = memberships[0]?.org_id || null;
     c.org = [
       "organization",
       "inventory",
