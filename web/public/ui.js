@@ -50,6 +50,11 @@ export const icon = (name) => {
     logout: "M9 4H3v16h6 M9 12h12 M17 8l4 4-4 4",
     check: "m5 12 4 4 10-10",
     profile: "M20 21a8 8 0 0 0-16 0 M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
+    trust:
+      "M12 3.5 5 6v5.5c0 4 3 6.8 7 8 4-1.2 7-4 7-8V6z M9 12l2 2 4-4.5",
+    more: "M5 12h.01 M12 12h.01 M19 12h.01",
+    close: "M6 6l12 12 M18 6 6 18",
+    chevron: "m9 6 6 6-6 6",
   };
   return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${(
     paths[name] || paths.projects
@@ -68,8 +73,8 @@ export const textarea = (label, name, value = "", attrs = "") =>
   `<label>${esc(label)}<textarea name="${name}" rows="4" ${attrs}>${esc(value)}</textarea></label>`;
 export const select = (label, name, options, value = "") =>
   `<label>${esc(label)}<select aria-label="${esc(label)}" name="${name}">${options.map(([v, l]) => `<option value="${esc(v)}" ${String(value) === String(v) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>`;
-export const empty = (title, description, cta = "") =>
-  `<div class="empty"><span class="empty-icon">${icon("projects")}</span><h3>${esc(title)}</h3><p>${esc(description)}</p>${cta}</div>`;
+export const empty = (title, description, cta = "", iconName = "projects") =>
+  `<div class="empty"><span class="empty-icon">${icon(iconName)}</span><h3>${esc(title)}</h3><p>${esc(description)}</p>${cta}</div>`;
 export const heading = (eyebrow, title, description, action = "") =>
   `<header class="page-heading"><div><p class="eyebrow">${esc(eyebrow)}</p><h1 tabindex="-1">${esc(title)}</h1><p class="subtitle">${esc(description)}</p></div>${action}</header>`;
 export const panel = (title, body, extra = "") =>

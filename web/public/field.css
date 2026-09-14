@@ -1,15 +1,36 @@
 .field-shell {
+  min-height: 100vh;
+  background-image:
+    linear-gradient(#1d1f2006 1px, transparent 1px),
+    linear-gradient(90deg, #1d1f2006 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.field-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 65px;
+  padding: 0 24px;
+  background: var(--paper, #fafbf7);
+  border-bottom: 1px solid var(--line, #d4d8dc);
+}
+.field-topbar .brand {
+  font-size: 20px;
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted, #5d6065);
+  white-space: nowrap;
+}
+.field-shell-inner {
   max-width: 1100px;
   margin: auto;
   padding: 24px;
-}
-.field-shell header {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  margin-bottom: 24px;
 }
 .field-shell nav,
 .field-shell .actions {
@@ -83,15 +104,43 @@
   padding: 16px;
   background: #e8efe5;
 }
+/* Field tools: same tab language as the console, styled as buttons since
+   the selected tool is local UI state rather than a URL route. */
+.field-shell .field-tabs {
+  gap: 22px;
+  margin: 20px 0 24px;
+  border-bottom: 1px solid var(--line, #d4d8dc);
+}
+.field-tab {
+  background: none;
+  border: 0;
+  min-height: auto;
+  padding: 0 0 13px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted, #5d6065);
+  border-bottom: 2px solid transparent;
+}
+.field-tab[aria-current] {
+  color: var(--steel-strong, #416180);
+  border-color: var(--steel, #5980a6);
+  font-weight: 600;
+}
 @media (max-width: 600px) {
-  .field-shell {
+  .field-topbar {
+    padding: 0 16px;
+  }
+  .field-shell-inner {
     padding: 16px;
   }
   .field-shell .panel {
     padding: 14px;
   }
-  .field-shell h1 {
+  .field-shell-inner h1 {
     font-size: 32px;
+  }
+  .field-shell .field-tabs {
+    gap: 14px;
   }
   .field-shell nav .btn {
     flex: 1;
@@ -107,13 +156,14 @@
   }
 }
 @media print {
-  .field-shell header,
+  .field-topbar,
   .field-shell nav,
   .field-shell button,
   .field-status {
     display: none;
   }
-  .field-shell {
+  .field-shell-inner {
     max-width: none;
+    padding: 0;
   }
 }

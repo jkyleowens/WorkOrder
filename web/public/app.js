@@ -50,7 +50,42 @@ function auth(register = location.pathname === "/register", message = "") {
   cleanupTimeGrid?.();
   cleanupTimeGrid = null;
   c.user = null;
-  root.innerHTML = `<main id="main" class="auth-layout" aria-busy="false"><section class="auth-story">${brand}<div class="story-copy"><p class="eyebrow">THE WAY GOOD WORK HAPPENS</p><h1>Many ways to work.<br>One place to belong.</h1><p>Find your next opportunity. Bring your people together. Make something that matters.</p></div><div class="auth-diagram" aria-hidden="true"><div class="diagram-user"><span class="avatar">YOU</span><strong>One account. Every possibility.</strong></div><div class="diagram-branches"><span>Independent work</span><span>Your projects</span><span>Your organization</span></div></div><footer>Built around people. Ready for work.</footer></section><section class="auth-form-wrap"><div class="auth-mobile-brand">${brand}</div><div class="auth-form"><p class="eyebrow">${register ? "START YOUR NEXT CHAPTER" : "YOUR WORKSPACE IS WAITING"}</p><h2>${register ? "Create your account" : "Welcome back"}</h2><p>${register ? "A little about you. A world of possibilities." : "Sign in to pick up where you left off."}</p><form id="auth-form">${register ? field("Full name", "full_name", "text", "", 'required maxlength="120" autocomplete="name"') : ""}${field("Email address", "email", "email", "", 'required maxlength="254" autocomplete="email"')}${field("Password", "password", "password", "", `required ${register ? 'minlength="12"' : ""} autocomplete="${register ? "new-password" : "current-password"}"`)}<label class="show-password"><input type="checkbox" id="show-password"> Show password</label>${register ? '<p class="hint">Use at least 12 characters (up to 72 bytes).</p>' : ""}<p class="form-error" role="alert" ${message ? "" : "hidden"}>${esc(message)}</p><button class="btn primary auth-submit" type="submit">${register ? "Create account" : "Sign in"} ${icon("arrow")}</button></form><p class="auth-switch">${register ? 'Already part of WorkOrder? <a href="/login">Sign in</a>' : 'New to WorkOrder? <a href="/register">Create an account</a>'}</p><div class="auth-note">${icon("check")} One account for your work, your clients, and your team.</div></div><footer class="auth-footer">WorkOrder · Your work, in order.</footer></section></main>`;
+  const steps = [
+    [
+      "Scope the work",
+      "Post a project and break it into scopes. A driveway repour can stay one scope; a full retrofit can split into demolition, rough-in, and finishes — each bid and awarded on its own.",
+    ],
+    [
+      "Bid, or get bid on",
+      "Independent contractors and organizations bid on the scopes that fit their trade. You award each one — the whole project doesn’t have to go to a single winner.",
+    ],
+    [
+      "Work, and log it",
+      "Awarded crews clock time against their scope, in the office or from a jobsite — the same hours feed your timesheets and your organization’s labor costing.",
+    ],
+    [
+      "Fund it, release it",
+      "Clients fund a scope and release payment against approved work. Pay applications, change orders, and lien waivers stay attached to the record.",
+    ],
+  ];
+  const audiences = [
+    [
+      "trust",
+      "For contractors",
+      "Bid on the scope that matches your trade, not the whole project. Credentials, reviews, and your rate travel with your profile.",
+    ],
+    [
+      "people",
+      "For organizations",
+      "Hire, assign a crew, and see labor and material cost roll up automatically as your team logs hours against awarded work.",
+    ],
+    [
+      "billing",
+      "For clients",
+      "Fund work in stages as scopes are awarded, approve pay applications against real hours, and keep a record if something needs to be disputed.",
+    ],
+  ];
+  root.innerHTML = `<main id="main" class="auth-layout" aria-busy="false"><div class="auth-hero"><section class="auth-story">${brand}<div class="story-copy"><p class="eyebrow">BUILT FOR TRADE WORK</p><h1>Every job, broken into work that gets done.</h1><p>Post a project once, and split it into scopes that are bid, staffed, timed, and paid on their own — for the crew doing the work and the client footing the bill.</p></div><div class="auth-diagram" aria-hidden="true"><div class="diagram-user"><span class="avatar">YOU</span><strong>One account. Every possibility.</strong></div><div class="diagram-branches"><span>Independent work</span><span>Your projects</span><span>Your organization</span></div></div><footer>Built around people. Ready for work.</footer></section><section class="auth-form-wrap"><div class="auth-mobile-brand">${brand}</div><div class="auth-form"><p class="eyebrow">${register ? "START YOUR NEXT CHAPTER" : "YOUR WORKSPACE IS WAITING"}</p><h2>${register ? "Create your account" : "Welcome back"}</h2><p>${register ? "A little about you. A world of possibilities." : "Sign in to pick up where you left off."}</p><form id="auth-form">${register ? field("Full name", "full_name", "text", "", 'required maxlength="120" autocomplete="name"') : ""}${field("Email address", "email", "email", "", 'required maxlength="254" autocomplete="email"')}${field("Password", "password", "password", "", `required ${register ? 'minlength="12"' : ""} autocomplete="${register ? "new-password" : "current-password"}"`)}<label class="show-password"><input type="checkbox" id="show-password"> Show password</label>${register ? '<p class="hint">Use at least 12 characters (up to 72 bytes).</p>' : ""}<p class="form-error" role="alert" ${message ? "" : "hidden"}>${esc(message)}</p><button class="btn primary auth-submit" type="submit">${register ? "Create account" : "Sign in"} ${icon("arrow")}</button></form><p class="auth-switch">${register ? 'Already part of WorkOrder? <a href="/login">Sign in</a>' : 'New to WorkOrder? <a href="/register">Create an account</a>'}</p><div class="auth-note">${icon("check")} One account for your work, your clients, and your team.</div></div></section></div><section class="marketing-section"><p class="eyebrow">HOW IT WORKS</p><h2>From posted job to released payment, one scope at a time.</h2><ol class="step-sequence">${steps.map(([title, body], i) => `<li><span class="step-number">${String(i + 1).padStart(2, "0")}</span><h3>${esc(title)}</h3><p>${esc(body)}</p></li>`).join("")}</ol></section><section class="marketing-section audiences-section"><p class="eyebrow">WHO IT’S FOR</p><h2>One account, three ways to work.</h2><div class="audience-grid">${audiences.map(([i, title, body]) => `<article class="audience-card"><span class="square-icon">${icon(i)}</span><h3>${esc(title)}</h3><p>${esc(body)}</p></article>`).join("")}</div></section><footer class="site-footer">${brand}<p>Your work, in order.</p></footer></main>`;
   document.querySelector("#show-password").onchange = (e) =>
     (document.querySelector("[name=password]").type = e.target.checked
       ? "text"
@@ -86,20 +121,56 @@ function auth(register = location.pathname === "/register", message = "") {
     }
   };
 }
-const navigation = [
-  ["overview", "Overview", "overview"],
-  ["field", "Field work", "time"],
-  ["inbox", "Inbox", "inbox"],
-  ["projects", "Projects", "projects"],
-  ["billing", "Billing", "billing"],
-  ["jobs", "Employment", "jobs"],
-  ["time", "Time & reports", "time"],
-  ["inventory", "Inventory", "inventory"],
-  ["organizations", "Organizations", "people"],
-  ["people", "People & skills", "people"],
-  ["profile", "My profile", "profile"],
-  ["credentials", "Trust & verification", "profile"],
+const navGroups = [
+  [
+    "Work",
+    [
+      ["overview", "Overview", "overview"],
+      ["field", "Field work", "time"],
+      ["projects", "Projects", "projects"],
+      ["time", "Time & reports", "time"],
+    ],
+  ],
+  [
+    "Money & materials",
+    [
+      ["billing", "Billing", "billing"],
+      ["inventory", "Inventory", "inventory"],
+    ],
+  ],
+  [
+    "People",
+    [
+      ["inbox", "Inbox", "inbox"],
+      ["jobs", "Employment", "jobs"],
+      ["organizations", "Organizations", "people"],
+      ["people", "People & skills", "people"],
+    ],
+  ],
+  [
+    "Account",
+    [
+      ["profile", "My profile", "profile"],
+      ["credentials", "Trust & verification", "trust"],
+    ],
+  ],
 ];
+const navigation = navGroups.flatMap(([, items]) => items);
+const mobileTabs = [
+  ["overview", "Overview", "overview"],
+  ["field", "Field", "time"],
+  ["time", "Time", "time"],
+  ["inbox", "Inbox", "inbox"],
+];
+const navLink = (key, label, i, selected) =>
+  `<a href="${key === "field" ? "/field" : `#${key}`}" aria-label="${label}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}${selected === key ? '<span class="nav-dot"></span>' : ""}</a>`;
+const navGroupsHtml = (selected) =>
+  navGroups
+    .map(
+      ([caption, items]) =>
+        `<p class="nav-caption">${esc(caption)}</p><nav aria-label="${esc(caption)}">${items.map(([key, label, i]) => navLink(key, label, i, selected)).join("")}</nav>`,
+    )
+    .join("");
 function shell(route) {
   const selected = ["application", "waiver", "waivers"].includes(route)
     ? "billing"
@@ -110,7 +181,7 @@ function shell(route) {
         : route === "organization"
           ? "organizations"
           : route;
-  root.innerHTML = `<div class="console"><aside class="sidebar">${brand}<p class="nav-caption">WORKSPACE</p><nav aria-label="Main navigation">${navigation.map(([key, label, i]) => `<a href="${key === "field" ? "/field" : `#${key}`}" aria-label="${label}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}${selected === key ? '<span class="nav-dot"></span>' : ""}</a>`).join("")}</nav><div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(navigation.find(([key]) => key === selected)?.[1] || "Overview")}</span><div class="topbar-right"><a class="inbox-shortcut" href="#inbox" aria-label="Open inbox${c.unread ? `, ${c.unread} unread` : ""}">${icon("inbox")}${c.unread ? `<span class="unread-indicator"></span>` : ""}</a><span class="context-pill"><i></i>${esc(c.org?.name || "Connected workspace")}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div></div>`;
+  root.innerHTML = `<div class="console"><aside class="sidebar">${brand}${navGroupsHtml(selected)}<div class="sidebar-note"><span class="eyebrow">ALL YOUR WORK. ALL OF YOU.</span><p>Good things happen<br>when people work together.</p></div><div class="account"><a href="#profile" class="avatar">${initials(c.user.full_name)}</a><div class="grow"><strong>${esc(c.user.full_name)}</strong><small>${esc(c.user.availability_status)}</small></div><button type="button" data-action="logout" aria-label="Sign out">${icon("logout")}</button></div></aside><div class="workspace"><header class="topbar"><span><span class="breadcrumb">Workspace</span><span class="slash">/</span>${esc(navigation.find(([key]) => key === selected)?.[1] || "Overview")}</span><div class="topbar-right"><a class="inbox-shortcut" href="#inbox" aria-label="Open inbox${c.unread ? `, ${c.unread} unread` : ""}">${icon("inbox")}${c.unread ? `<span class="unread-indicator"></span>` : ""}</a><span class="context-pill"><i></i>${esc(c.org?.name || "Connected workspace")}</span><span class="top-date">${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></div></header><main id="main" aria-busy="true"><div class="loading"><span class="loading-dot"></span>Loading your workspace…</div></main><footer class="workspace-footer"><span>WorkOrder</span><span>Your work, in order.</span></footer></div><nav class="mobile-tabbar" aria-label="Primary">${mobileTabs.map(([key, label, i]) => `<a class="mobile-tab" href="${key === "field" ? "/field" : `#${key}`}" ${selected === key ? 'aria-current="page"' : ""}>${icon(i)}<span>${label}</span>${key === "inbox" && c.unread ? `<span class="unread-count">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}</a>`).join("")}<button type="button" class="mobile-tab" data-nav-toggle="more" aria-haspopup="dialog" aria-expanded="false">${icon("more")}<span>More</span></button></nav><div class="more-sheet"><div class="more-backdrop" data-nav-close></div><div class="more-panel" role="dialog" aria-modal="true" aria-label="More navigation"><div class="more-panel-head"><p class="eyebrow">WorkOrder</p><button type="button" class="close" data-nav-close aria-label="Close">${icon("close")}</button></div>${navGroupsHtml(selected)}<button type="button" class="more-signout" data-action="logout">${icon("logout")}<span>Sign out</span></button></div></div></div>`;
 }
 c.reload = async () => {
   cleanupTimeGrid?.();
@@ -196,6 +267,15 @@ c.reload = async () => {
   }
 };
 let actionBusy = false;
+function setMoreOpen(open) {
+  const sheet = document.querySelector(".more-sheet");
+  const tab = document.querySelector('[data-nav-toggle="more"]');
+  if (!sheet) return;
+  sheet.classList.toggle("open", open);
+  tab?.setAttribute("aria-expanded", String(open));
+  if (open) sheet.querySelector("a, button:not(.close)")?.focus();
+  else tab?.focus();
+}
 document.addEventListener("click", async (e) => {
   if (e.target.closest(".skip")) {
     e.preventDefault();
@@ -204,6 +284,15 @@ document.addEventListener("click", async (e) => {
     main.focus();
     return;
   }
+  if (e.target.closest("[data-nav-close]")) {
+    setMoreOpen(false);
+    return;
+  }
+  if (e.target.closest("[data-nav-toggle=more]")) {
+    setMoreOpen(!document.querySelector(".more-sheet")?.classList.contains("open"));
+    return;
+  }
+  if (e.target.closest(".more-panel a")) setMoreOpen(false);
   const target = e.target.closest("[data-action]");
   if (!target || actionBusy) return;
   actionBusy = true;
@@ -219,6 +308,10 @@ document.addEventListener("click", async (e) => {
 });
 window.addEventListener("hashchange", () => {
   if (c.user) c.reload();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.querySelector(".more-sheet.open"))
+    setMoreOpen(false);
 });
 window.addEventListener("session-expired", () => {
   document.querySelector("#modal").close();

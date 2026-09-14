@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@600&display=swap">
+  <style>
+    body { margin: 0; background: #f2f2f3; color: #1d1f20; font-family: Barlow, system-ui, sans-serif; font-size: 15px; line-height: 1.45; }
+    a { color: #416180; } a:hover { color: #2c455d; }
+    h1, h2, h3 { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+    p { margin: 0; text-wrap: pretty; }
+    .eyebrow { font-size: 11px; letter-spacing: 0.11em; text-transform: uppercase; color: #416180; font-weight: 500; margin: 0; }
+    .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+    .col { display: flex; flex-direction: column; gap: 10px; }
+    .col-head { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #5d6065; font-weight: 500; padding-bottom: 8px; border-bottom: 2px solid #1d1f20; }
+    .node { background: #fafafb; border: 1px solid #b7bcc2; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+    .node strong { font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .node small { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 11px; color: #5d6065; line-height: 1.45; }
+    .node.new { background: #eef4fa; border: 1.5px dashed #5980a6; }
+    .node.legacy { background: transparent; border-style: dotted; opacity: 0.7; }
+    .tag { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; color: #ffffff; background: #416180; padding: 1px 5px; border-radius: 2px; font-family: Barlow, sans-serif; white-space: nowrap; }
+    .arrow { display: flex; align-items: center; justify-content: center; padding-top: 28px; }
+    .step { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-right: 1px solid #d0d1d3; }
+    .step b { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 26px; line-height: 1; color: #5980a6; }
+  </style>
+</helmet>
+<div style="width: 1400px; min-height: 1240px; box-sizing: border-box; background: #f2f2f3; padding: 40px 48px 48px; display: flex; flex-direction: column; gap: 28px;">
+
+  <header style="display: flex; justify-content: space-between; align-items: flex-end; gap: 32px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <p class="eyebrow">Engineering · 01</p>
+      <h1 style="font-size: 48px; line-height: 1.02;">System architecture: today and target</h1>
+      <p style="color: #5d6065; max-width: 760px;">One Express app serves the console, the field workspace and the JSON API from a single Vercel function. The plan keeps that shape and adds the pieces a paying customer depends on.</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; flex-shrink: 0;">
+      <div style="display: flex; align-items: center; gap: 8px;"><span style="width: 26px; height: 16px; border: 1px solid #b7bcc2; background: #fafafb;"></span>On main @ 7b0100d</div>
+      <div style="display: flex; align-items: center; gap: 8px;"><span style="width: 26px; height: 16px; border: 1.5px dashed #5980a6; background: #eef4fa; box-sizing: border-box;"></span>Planned, tagged with release</div>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 30px minmax(0, 0.9fr) 30px minmax(0, 1.05fr) 30px minmax(0, 1.2fr) 30px minmax(0, 1fr); align-items: start;">
+    <div class="col">
+      <div class="col-head">Clients</div>
+      <div class="node new"><strong>Marketing + pricing <span class="tag">R4</span></strong><small>EJS route group, edge-cached, no session</small></div>
+      <div class="node"><strong>Web console</strong><small>views/index.ejs<br>app.js · pages.js · billing.js<br>time-grid.js · trust.js</small></div>
+      <div class="node"><strong>Field workspace</strong><small>field.html · field.js<br>field-sw.js caches shell only<br>field-store.js queue (localStorage)</small></div>
+      <div class="node new"><strong>Field inside shell <span class="tag">R4</span></strong><small>console route; tab bar under 800px</small></div>
+      <div class="node new"><strong>IndexedDB queue <span class="tag">R6</span></strong><small>photos + documents offline (D5)</small></div>
+      <div class="node legacy"><strong>Electron prototype</strong><small>src/ · not connected to the API</small></div>
+    </div>
+    <div class="arrow"><svg width="24" height="14" viewBox="0 0 24 14"><path d="M0 7h20M15 2l6 5-6 5" fill="none" stroke="#5d6065" stroke-width="1.5"></path></svg></div>
+
+    <div class="col">
+      <div class="col-head">Hosting</div>
+      <div class="node"><strong>Vercel</strong><small>vercel.json → api/index.cjs<br>one Node function, all routes</small></div>
+      <div class="node"><strong>Static assets</strong><small>web/public/** bundled<br>Barlow woff2 self-hosted</small></div>
+      <div class="node new"><strong>QA + staging <span class="tag">R4</span></strong><small>separate projects, databases and Stripe test keys</small></div>
+      <div class="node new"><strong>Deployment protection <span class="tag">R4</span></strong><small>previews visible to the team only</small></div>
+    </div>
+    <div class="arrow"><svg width="24" height="14" viewBox="0 0 24 14"><path d="M0 7h20M15 2l6 5-6 5" fill="none" stroke="#5d6065" stroke-width="1.5"></path></svg></div>
+
+    <div class="col">
+      <div class="col-head">HTTP layer · app.cjs</div>
+      <div class="node"><strong>Express 5 createApp</strong><small>helmet · express-session<br>connect-pg-simple store<br>CSRF token on writes<br>zod request schemas</small></div>
+      <div class="node"><strong>Auth rate limit</strong><small>express-rate-limit<br>process-local store</small></div>
+      <div class="node new"><strong>Shared limiter store <span class="tag">R5</span></strong><small>required for more than one instance</small></div>
+      <div class="node new"><strong>Entitlements guard <span class="tag">R6</span></strong><small>plan limits checked on org routes</small></div>
+      <div class="node"><strong>Stripe webhook</strong><small>POST /api/webhooks/stripe</small></div>
+    </div>
+    <div class="arrow"><svg width="24" height="14" viewBox="0 0 24 14"><path d="M0 7h20M15 2l6 5-6 5" fill="none" stroke="#5d6065" stroke-width="1.5"></path></svg></div>
+
+    <div class="col">
+      <div class="col-head">Domain services</div>
+      <div class="node"><strong>PlatformService</strong><small>services.cjs · identity, orgs, jobs,<br>market, bids, time, inventory, reports</small></div>
+      <div class="node"><strong>FieldService</strong><small>field.cjs · time batches, daily<br>reports, schedule, signed documents</small></div>
+      <div class="node"><strong>BillingService · FundingService</strong><small>billing.cjs · funding.cjs<br>payments.cjs Stripe adapter</small></div>
+      <div class="node"><strong>TrustService · waivers · files</strong><small>trust.cjs · waivers.cjs · files.cjs<br>credentials, reviews, disputes</small></div>
+      <div class="node new"><strong>NotificationService <span class="tag">R5</span></strong><small>email delivery for notifications rows</small></div>
+      <div class="node new"><strong>SubscriptionService <span class="tag">R6</span></strong><small>plans, seats, scope fees</small></div>
+      <div class="node new"><strong>AuditService <span class="tag">R6</span></strong><small>append-only record of money + role changes</small></div>
+    </div>
+    <div class="arrow"><svg width="24" height="14" viewBox="0 0 24 14"><path d="M0 7h20M15 2l6 5-6 5" fill="none" stroke="#5d6065" stroke-width="1.5"></path></svg></div>
+
+    <div class="col">
+      <div class="col-head">Data + providers</div>
+      <div class="node"><strong>PostgreSQL</strong><small>Supabase in production<br>11 forward-only migrations<br>advisory-locked migrate</small></div>
+      <div class="node"><strong>Stripe Connect</strong><small>Express accounts · Checkout<br>payouts · refunds</small></div>
+      <div class="node new"><strong>Stripe Billing <span class="tag">R6</span></strong><small>subscriptions + invoices</small></div>
+      <div class="node new"><strong>Email provider <span class="tag">R5</span></strong><small>[VENDOR] · verify, reset, notify</small></div>
+      <div class="node new"><strong>Job worker <span class="tag">R5</span></strong><small>payout-aging.cjs on a schedule<br>notification fan-out</small></div>
+      <div class="node new"><strong>Monitoring <span class="tag">R7</span></strong><small>[VENDOR] errors, uptime, alerts</small></div>
+    </div>
+  </div>
+
+  <section style="display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: stretch;">
+    <div style="background: #fafafb; border: 1px solid #d0d1d3; display: flex; flex-direction: column;">
+      <div style="padding: 16px 18px 12px; display: flex; justify-content: space-between; align-items: baseline;"><h2 style="font-size: 23px;">Request path: funding a scope</h2><span style="font-size: 12px; color: #5d6065;">Existing flow, shown to anchor the new services</span></div>
+      <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #d0d1d3;">
+        <div class="step"><b>1</b><span style="font-size: 13px;">Client funds scope</span><small class="mono" style="font-size: 11px; color: #5d6065;">POST /api/subdivisions/:id/fundings + CSRF</small></div>
+        <div class="step"><b>2</b><span style="font-size: 13px;">FundingService validates in a transaction</span><small class="mono" style="font-size: 11px; color: #5d6065;">funding.cjs</small></div>
+        <div class="step"><b>3</b><span style="font-size: 13px;">Adapter opens Stripe Checkout</span><small class="mono" style="font-size: 11px; color: #5d6065;">payments.cjs · fake provider in tests</small></div>
+        <div class="step"><b>4</b><span style="font-size: 13px;">Stripe reports the outcome</span><small class="mono" style="font-size: 11px; color: #5d6065;">webhook → provider_events → scope_fundings</small></div>
+        <div class="step" style="border-right: 0;"><b>5</b><span style="font-size: 13px;">Client releases against approved work</span><small class="mono" style="font-size: 11px; color: #5d6065;">POST /api/subdivisions/:id/releases</small></div>
+      </div>
+    </div>
+    <div style="background: #e9e9ea; border: 1px solid #d0d1d3; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 style="font-size: 21px;">Constraints from backend/README</h2>
+      <ul style="margin: 0; padding-left: 18px; font-size: 13.5px; color: #1d1f20; display: flex; flex-direction: column; gap: 6px;">
+        <li>Auth limiter is process-local; multi-instance needs a shared store</li>
+        <li>No email verification, password recovery or notification delivery yet</li>
+        <li>Proxy trust is off by default; set an explicit policy per deploy</li>
+        <li>Back up before any production schema upgrade</li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+</body>
+</html>

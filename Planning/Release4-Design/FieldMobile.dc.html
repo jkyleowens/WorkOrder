@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@600&display=swap">
+  <style>
+    body { margin: 0; background: #f2f2f3; color: #1d1f20; font-family: Barlow, system-ui, sans-serif; font-size: 15px; line-height: 1.45; }
+    a { color: #416180; text-decoration: none; } a:hover { color: #2c455d; }
+    h1, h2, h3 { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+    p { margin: 0; }
+    .eyebrow { font-size: 11px; letter-spacing: 0.11em; text-transform: uppercase; color: #416180; font-weight: 500; margin: 0; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 14px; border-radius: 3px; font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 18px; border: 1px solid #d0d1d3; box-sizing: border-box; background: #fafafb; color: #1d1f20; }
+    .btn.primary { background: #416180; border-color: #416180; color: #ffffff; min-height: 56px; font-size: 21px; }
+    .status { display: inline-flex; align-items: center; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; padding: 2px 7px; border: 1px solid transparent; font-weight: 500; white-space: nowrap; }
+    .s-amber { color: #775525; background: #f5edde; border-color: #e3d5b9; }
+    .tab { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 500; color: #5d6065; min-height: 64px; }
+    .tab svg { width: 22px; height: 22px; }
+    .tab.on { color: #2c455d; box-shadow: inset 0 2px #5980a6; background: #eef4fa; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; background: #f2f2f3; overflow: hidden;">
+
+  <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #e9e9ea; border-bottom: 1px solid #d0d1d3;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <svg width="24" height="24" viewBox="0 0 48 48"><rect x="7" y="9" width="34" height="30" fill="none" stroke="#5980a6" stroke-width="2"></rect><path d="M7 19h34M19 19v20M3 9h8M7 5v8M37 39h8M41 35v8" fill="none" stroke="#1d1f20" stroke-width="1.5"></path></svg>
+      <h1 style="font-size: 24px;">Field</h1>
+    </div>
+    <span style="display: flex; align-items: center; gap: 6px; border: 1px solid #d0d1d3; border-radius: 2px; padding: 5px 10px; font-size: 13px; background: #fafafb; min-height: 32px; box-sizing: border-box;"><i style="width: 6px; height: 6px; background: #5980a6; display: inline-block;"></i>Moreno Electric<svg width="12" height="12" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="#5d6065" stroke-width="1.5"></path></svg></span>
+  </header>
+
+  <div role="status" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; background: #f5edde; border-bottom: 1px solid #e3d5b9; color: #775525; font-size: 13px;">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#775525" stroke-width="1.5"><path d="M2 7.5a11 11 0 0 1 16 0M5 10.5a6.5 6.5 0 0 1 10 0M8 13.5a2.5 2.5 0 0 1 4 0M3 3l14 14"></path></svg>
+    <span style="flex-grow: 1;"><strong style="font-weight: 700;">Offline</strong> · 2 entries saved on this phone</span>
+    <span style="font-size: 12px;">Syncs when online</span>
+  </div>
+
+  <main style="flex-grow: 1; padding: 16px; display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
+    <section style="background: #fafafb; border: 1px solid #d0d1d3; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <p class="eyebrow">Clocked in since 07:02</p>
+        <h2 style="font-size: 27px; line-height: 1.1;">1.2 Slab saw-cutting</h2>
+        <span style="font-size: 13px; color: #5d6065;">Warehouse retrofit · 2 workers</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px; border-top: 1px solid #d0d1d3; padding-top: 12px;">
+        <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 68px; line-height: 0.9; font-variant-numeric: tabular-nums;">3:41</span>
+        <span style="font-size: 13px; color: #5d6065;">elapsed · local device time</span>
+      </div>
+      <a href="#" class="btn primary">Clock out</a>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+        <a href="#" class="btn">Switch scope</a>
+        <a href="#" class="btn">Correct clock</a>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;"><h3 style="font-size: 20px;">Waiting to sync</h3><span style="font-size: 12px; color: #5d6065;">Never sent twice</span></div>
+      <div style="background: #fafafb; border: 1px solid #d0d1d3;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 56px; padding: 0 14px;">
+          <div style="display: flex; flex-direction: column; line-height: 1.3;"><strong style="font-weight: 500; font-size: 14px;">Sep 12 · 07:00–15:30</strong><span style="font-size: 12px; color: #5d6065;">1.2 Slab saw-cutting · 2 workers</span></div>
+          <span class="status s-amber">Queued</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 56px; padding: 0 14px; border-top: 1px solid #d0d1d3;">
+          <div style="display: flex; flex-direction: column; line-height: 1.3;"><strong style="font-weight: 500; font-size: 14px;">Sep 11 · 06:30–15:30</strong><span style="font-size: 12px; color: #5d6065;">1.2 Slab saw-cutting · 1 worker</span></div>
+          <span class="status s-amber">Queued</span>
+        </div>
+      </div>
+    </section>
+
+    <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+      <a href="#" style="background: #fafafb; border: 1px solid #d0d1d3; min-height: 72px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; color: #1d1f20; box-sizing: border-box;">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#416180" stroke-width="1.5"><path d="M5 2.5h7l3 3v12H5z"></path><path d="M8 9h5M8 12h5M8 15h3"></path></svg>
+        <strong style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 18px;">Daily report</strong>
+      </a>
+      <a href="#" style="background: #fafafb; border: 1px solid #d0d1d3; min-height: 72px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; color: #1d1f20; box-sizing: border-box;">
+        <div style="display: flex; justify-content: space-between; align-items: center;"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#416180" stroke-width="1.5"><path d="M3 15.5c2-1 3-3 4-3s1 2 2.5 2 2-3 3.5-3 1.5 2 4 2"></path><path d="M3 18h14"></path></svg><span style="font-size: 11px; font-weight: 700; color: #ffffff; background: #416180; padding: 0 6px; border-radius: 2px;">1</span></div>
+        <strong style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 18px;">Documents to sign</strong>
+      </a>
+    </section>
+  </main>
+
+  <nav style="flex-shrink: 0; display: flex; background: #fafafb; border-top: 1px solid #d0d1d3;">
+    <a href="#" class="tab on"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 18s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="10" cy="8" r="2"></circle></svg>Field</a>
+    <a href="#" class="tab"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h5l2 2h7v9H3z"></path></svg>Projects</a>
+    <a href="#" class="tab"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l3 2"></path></svg>Time</a>
+    <a href="#" class="tab"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 11l2-7h10l2 7v5H3z"></path><path d="M3 11h4l1 2h4l1-2h4"></path></svg>Inbox</a>
+    <a href="#" class="tab"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h14M3 10h14M3 15h14"></path></svg>More</a>
+  </nav>
+
+</div>
+</x-dc>
+</body>
+</html>

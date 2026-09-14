@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@600&display=swap">
+  <style>
+    body { margin: 0; background: #f2f2f3; color: #1d1f20; font-family: Barlow, system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+    a { color: #416180; text-decoration: none; } a:hover { color: #2c455d; }
+    h1, h2, h3 { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+    p { margin: 0; text-wrap: pretty; }
+    .eyebrow { font-size: 11px; letter-spacing: 0.11em; text-transform: uppercase; color: #416180; font-weight: 500; margin: 0; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 40px; padding: 8px 14px; border-radius: 3px; font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 16px; border: 1px solid #d0d1d3; box-sizing: border-box; white-space: nowrap; background: transparent; color: #1d1f20; }
+    .btn.primary { background: #416180; border-color: #416180; color: #ffffff; }
+    .btn.text { border: 0; color: #416180; padding: 5px; min-height: 0; font-size: 15px; }
+    .status { display: inline-flex; align-items: center; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; padding: 2px 7px; border: 1px solid transparent; font-weight: 500; white-space: nowrap; }
+    .s-blue { background: #e1ebf5; color: #2c455d; border-color: #bbcedf; }
+    .s-green { color: #365b49; background: #e7eee9; border-color: #c9d9cf; }
+    .nav-caption { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #5d6065; padding: 16px 12px 6px; font-weight: 500; }
+    .nav a { display: flex; align-items: center; gap: 12px; padding: 0 12px; min-height: 40px; border-left: 2px solid transparent; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #5d6065; font-weight: 500; }
+    .nav a svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .nav a.on { background: #eef4fa; border-left-color: #5980a6; color: #2c455d; }
+    .stat { padding: 18px; border-right: 1px solid #d0d1d3; display: flex; flex-direction: column; }
+    .stat span { font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065; }
+    .stat strong { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 30px; font-variant-numeric: tabular-nums; margin: 8px 0 2px; line-height: 1.1; }
+    .stat small { color: #5d6065; font-size: 12px; }
+    .step { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 16px 0; border-top: 1px solid #d0d1d3; }
+    th { background: #e9e9ea; color: #5d6065; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; padding: 9px 12px; font-weight: 500; }
+    td { font-size: 13px; padding: 12px; border-top: 1px solid #d0d1d3; vertical-align: top; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 1000px; display: flex; background: #f2f2f3; overflow: hidden;">
+
+  <aside style="width: 242px; flex-shrink: 0; background: #e9e9ea; border-right: 1px solid #d0d1d3; padding: 26px 16px 18px; box-sizing: border-box; display: flex; flex-direction: column;">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 0 6px;">
+      <svg width="30" height="30" viewBox="0 0 48 48"><rect x="7" y="9" width="34" height="30" fill="none" stroke="#5980a6" stroke-width="2"></rect><path d="M7 19h34M19 19v20M3 9h8M7 5v8M37 39h8M41 35v8" fill="none" stroke="#1d1f20" stroke-width="1.5"></path></svg>
+      <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 26px; text-transform: uppercase; letter-spacing: 0.02em;">WorkOrder<span style="color: #416180;">®</span></span>
+    </div>
+    <div style="margin: 20px 0 4px; border: 1px solid #d0d1d3; background: #fafafb; border-radius: 3px; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+      <div style="display: flex; flex-direction: column; line-height: 1.25;"><span style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Working as</span><strong style="font-size: 14px; font-weight: 500;">Personal</strong></div>
+      <svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="#5d6065" stroke-width="1.5"></path></svg>
+    </div>
+    <nav class="nav" style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-caption">Work</div>
+      <a href="#" class="on"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="6" height="6"></rect><rect x="11" y="3" width="6" height="6"></rect><rect x="3" y="11" width="6" height="6"></rect><rect x="11" y="11" width="6" height="6"></rect></svg><span>Overview</span></a>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 18s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="10" cy="8" r="2"></circle></svg><span>Field work</span></a>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h5l2 2h7v9H3z"></path></svg><span>Projects</span></a>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l3 2"></path></svg><span>Time &amp; reports</span></a>
+      <div class="nav-caption">Money &amp; materials</div>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="14" height="10"></rect><path d="M3 8.5h14M6 12h3"></path></svg><span>Billing</span></a>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6.5 10 3l7 3.5v7L10 17l-7-3.5z"></path><path d="M3 6.5 10 10l7-3.5M10 10v7"></path></svg><span>Inventory</span></a>
+      <div class="nav-caption">People</div>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 11l2-7h10l2 7v5H3z"></path><path d="M3 11h4l1 2h4l1-2h4"></path></svg><span style="flex-grow: 1;">Inbox</span><span style="background: #416180; color: #ffffff; font-size: 10px; padding: 1px 6px; border-radius: 2px; letter-spacing: 0;">2</span></a>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="14" height="9"></rect><path d="M7 7V4h6v3"></path></svg><span>Employment</span></a>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 17V3h8v14M12 8h4v9M2 17h16M7 6h2M7 9h2M7 12h2"></path></svg><span>Organizations</span></a>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7" r="2.5"></circle><path d="M3 16c0-2.5 2-4.5 4.5-4.5S12 13.5 12 16"></path><circle cx="14" cy="7.5" r="2"></circle><path d="M13 11.6c2.3.2 4 2 4 4.4"></path></svg><span>People &amp; skills</span></a>
+      <div class="nav-caption">Account</div>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="7" r="3"></circle><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"></path></svg><span>My profile</span></a>
+      <a href="#"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2.5 16 5v5c0 3.8-2.6 6.5-6 7.5-3.4-1-6-3.7-6-7.5V5z"></path><path d="M7 10l2 2 4-4"></path></svg><span>Trust &amp; verification</span></a>
+    </nav>
+    <div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 14px 6px 0; border-top: 1px solid #d0d1d3;">
+      <span style="width: 34px; height: 34px; border-radius: 3px; background: #dbe4ed; color: #2c455d; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">AM</span>
+      <div style="display: flex; flex-direction: column; line-height: 1.25;"><strong style="font-size: 14px; font-weight: 500;">Alex Moreno</strong><small style="color: #5d6065; font-size: 12px;">available</small></div>
+    </div>
+  </aside>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; background-image: linear-gradient(#1d1f2003 1px, transparent 1px), linear-gradient(90deg, #1d1f2003 1px, transparent 1px); background-size: 28px 28px;">
+    <header style="height: 65px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; border-bottom: 1px solid #d0d1d3; color: #5d6065; font-size: 13px;">
+      <span>Workspace <span style="margin: 0 6px;">/</span> <span style="color: #1d1f20;">Overview</span></span>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="position: relative; display: flex;"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5d6065" stroke-width="1.5"><path d="M3 11l2-7h10l2 7v5H3z"></path><path d="M3 11h4l1 2h4l1-2h4"></path></svg><span style="position: absolute; right: -2px; top: -2px; width: 7px; height: 7px; background: #5980a6;"></span></span>
+        <span style="display: flex; align-items: center; gap: 7px; border: 1px solid #d0d1d3; border-radius: 2px; padding: 4px 10px;"><i style="width: 6px; height: 6px; background: #5980a6; display: inline-block;"></i>Personal workspace</span>
+        <span>Sep 13, 2026</span>
+      </div>
+    </header>
+
+    <main style="padding: 32px 40px; display: flex; flex-direction: column; gap: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;"><p class="eyebrow">Workspace</p><h1 style="font-size: 42px; line-height: 1.08;">Overview</h1></div>
+        <div style="display: flex; gap: 10px;"><a href="#" class="btn">Log time</a><a href="#" class="btn primary">Post a project</a></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #d0d1d3; background: #fafafb;">
+        <div class="stat"><span>Hours</span><strong>0.00 h</strong><small>This week · Mon–Sun</small></div>
+        <div class="stat"><span>Assignments</span><strong>0</strong><small>Awarded scopes in progress</small></div>
+        <div class="stat"><span>Bids</span><strong>0</strong><small>Pending client decision</small></div>
+        <div class="stat" style="border-right: 0;"><span>Projects posted</span><strong>0</strong><small>As a client</small></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 22px; align-items: start;">
+        <section style="background: #fafafb; border: 1px solid #d0d1d3; padding: 22px; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+            <h2 style="font-size: 23px;">Get set up</h2>
+            <div style="display: flex; align-items: center; gap: 14px;"><span style="font-size: 13px; color: #5d6065;">1 of 4 done</span><a href="#" class="btn text">Hide</a></div>
+          </div>
+          <div style="height: 5px; background: #e9e9ea; margin: 12px 0 8px;"><div style="width: 25%; height: 5px; background: #5980a6;"></div></div>
+          <div class="step" style="border-top: 0;">
+            <svg width="28" height="28" viewBox="0 0 28 28"><rect x="1" y="1" width="26" height="26" rx="3" fill="#416180"></rect><path d="M8 14.5l4 4 8-8" fill="none" stroke="#ffffff" stroke-width="2"></path></svg>
+            <div style="display: flex; flex-direction: column;"><strong style="font-weight: 500; color: #5d6065; text-decoration: line-through;">Create your account</strong></div>
+            <span class="status s-green">Done</span>
+          </div>
+          <div class="step">
+            <svg width="28" height="28" viewBox="0 0 28 28"><rect x="1.5" y="1.5" width="25" height="25" rx="3" fill="#eef4fa" stroke="#5980a6"></rect><text x="14" y="19" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="15" font-weight="600" fill="#2c455d">2</text></svg>
+            <div style="display: flex; flex-direction: column; gap: 2px;"><strong style="font-weight: 700;">Add your hourly rate and one skill</strong><span style="font-size: 13px; color: #5d6065;">Profiles without a rate stay out of People search and can't bid.</span></div>
+            <a href="#" class="btn primary">Complete profile</a>
+          </div>
+          <div class="step">
+            <svg width="28" height="28" viewBox="0 0 28 28"><rect x="1.5" y="1.5" width="25" height="25" rx="3" fill="none" stroke="#d0d1d3"></rect><text x="14" y="19" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="15" font-weight="600" fill="#5d6065">3</text></svg>
+            <div style="display: flex; flex-direction: column; gap: 2px;"><strong style="font-weight: 700;">Bid on a scope or post a project</strong><span style="font-size: 13px; color: #5d6065;">Browse open scopes, or split your own job into scopes.</span></div>
+            <a href="#" class="btn">Open market</a>
+          </div>
+          <div class="step">
+            <svg width="28" height="28" viewBox="0 0 28 28"><rect x="1.5" y="1.5" width="25" height="25" rx="3" fill="none" stroke="#d0d1d3"></rect><text x="14" y="19" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="15" font-weight="600" fill="#5d6065">4</text></svg>
+            <div style="display: flex; flex-direction: column; gap: 2px;"><strong style="font-weight: 700;">Log your first hours</strong><span style="font-size: 13px; color: #5d6065;">Your weekly time grid appears after the first entry.</span></div>
+            <a href="#" class="btn">Log time</a>
+          </div>
+        </section>
+
+        <section style="background: #fafafb; border: 1px solid #d0d1d3; padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;"><h2 style="font-size: 23px;">Open in the market</h2><a href="#" class="btn text">All projects</a></div>
+          <div style="border: 1px solid #d0d1d3;">
+            <table style="border-collapse: collapse; width: 100%;">
+              <thead><tr><th>Scope</th><th style="text-align: right;">Bids</th></tr></thead>
+              <tbody>
+                <tr><td><strong style="font-weight: 500; font-size: 14px;">2 · Electrical rough-in</strong><br><span style="color: #5d6065;">Warehouse retrofit</span></td><td style="text-align: right;"><span class="status s-green">Open · 3</span></td></tr>
+                <tr><td><strong style="font-weight: 500; font-size: 14px;">1.1 · Metal stud framing</strong><br><span style="color: #5d6065;">Clinic tenant fit-out</span></td><td style="text-align: right;"><span class="status s-green">Open · 1</span></td></tr>
+                <tr><td><strong style="font-weight: 500; font-size: 14px;">3 · Flashing and gutters</strong><br><span style="color: #5d6065;">Roof replacement</span></td><td style="text-align: right;"><span class="status s-green">Open · 0</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="font-size: 13px; color: #5d6065;">Add skills to sort this list by what you do.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

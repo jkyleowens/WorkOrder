@@ -1,5 +1,7 @@
 import { api, write } from "./api.js";
 import { esc, field, textarea, select, modal, dateLabel } from "./ui.js";
+const brand = `<a class="brand" href="/console">${'<img src="/assets/mark.svg" alt="" width="28" height="28">'}WorkOrder<span>®</span></a>`;
+const topbar = `<header class="field-topbar">${brand}<a class="back-link" href="/console">← Office workspace</a></header>`;
 import {
   queue,
   saveQueued,
@@ -65,8 +67,7 @@ async function start() {
   } catch (e) {
     if (e.status === 401) {
       localStorage.removeItem("workorder:field:identity");
-      root.innerHTML =
-        '<h1>Field work</h1><p><a href="/login">Sign in</a> online before using the field workspace.</p>';
+      root.innerHTML = `${topbar}<div class="field-shell-inner"><h1>Field work</h1><p><a href="/login">Sign in</a> online before using the field workspace.</p></div>`;
       return;
     }
     user = JSON.parse(
@@ -74,7 +75,7 @@ async function start() {
     );
     data = user && snapshot(user.id);
     if (!data) {
-      root.innerHTML = `<h1>Field work</h1><p>${esc(e.message)}</p><p>Open this page online once to prepare offline time entry.</p><a href="/console">Back to console</a>`;
+      root.innerHTML = `${topbar}<div class="field-shell-inner"><h1>Field work</h1><p>${esc(e.message)}</p><p>Open this page online once to prepare offline time entry.</p></div>`;
       return;
     }
     if (!data.scopes.some((s) => s.id === Number(selected)))
@@ -96,14 +97,17 @@ async function render() {
   const s = scope(),
     items = queue(user.id),
     clock = activeClock(user.id);
-  root.innerHTML = `<header><div><span class="eyebrow">WorkOrder · ${esc(user.full_name)}</span><h1>Field work</h1></div><a href="/console">Office workspace</a></header><p class="field-status" role="status">${offline() ? "Offline · time is saved on this device" : "Online"} · ${items.length} queued ${notice ? ` · ${esc(notice)}` : ""}</p><div class="actions">${btn("Sync time", "sync")}${btn("Refresh assignments", "refresh")}</div>${select("Work scope", "scope", [["", "Choose a scope"], ...data.scopes.map((s) => [s.id, `${s.project_title} · ${s.scope}`])], selected || "")}<nav aria-label="Field tools">${[
+  root.innerHTML = `${topbar}<div class="field-shell-inner"><div class="page-heading"><div><p class="eyebrow">${esc(user.full_name)}</p><h1>Field work</h1></div></div><p class="field-status" role="status">${offline() ? "Offline · time is saved on this device" : "Online"} · ${items.length} queued ${notice ? ` · ${esc(notice)}` : ""}</p><div class="actions">${btn("Sync time", "sync")}${btn("Refresh assignments", "refresh")}</div>${select("Work scope", "scope", [["", "Choose a scope"], ...data.scopes.map((s) => [s.id, `${s.project_title} · ${s.scope}`])], selected || "")}<nav class="field-tabs" aria-label="Field tools">${[
     ["clock", "Time clock"],
     ["reports", "Daily reports"],
     ["documents", "Documents"],
     ["schedule", "Schedule"],
   ]
-    .map(([key, label]) => btn(label, "tab", key))
-    .join("")}</nav><section id="field-content"></section>`;
+    .map(
+      ([key, label]) =>
+        `<button type="button" class="field-tab" data-field="tab" data-id="${key}" ${tab === key ? 'aria-current="page"' : ""}>${esc(label)}</button>`,
+    )
+    .join("")}</nav><section id="field-content"></section></div>`;
   root.querySelector("[name=scope]").onchange = async (e) => {
     selected = e.target.value;
     await render();

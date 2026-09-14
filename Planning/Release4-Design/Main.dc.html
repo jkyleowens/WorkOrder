@@ -1,0 +1,187 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@600&display=swap">
+  <style>
+    body { margin: 0; background: #f2f2f3; color: #1d1f20; font-family: Barlow, system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+    a { color: #416180; } a:hover { color: #2c455d; }
+    h1, h2, h3 { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+    p { margin: 0; text-wrap: pretty; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    .eyebrow { font-size: 11px; letter-spacing: 0.11em; text-transform: uppercase; color: #416180; font-weight: 500; margin: 0; }
+    .status { display: inline-flex; align-items: center; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; padding: 2px 7px; border: 1px solid transparent; font-weight: 500; white-space: nowrap; }
+    .s-blue { background: #e1ebf5; color: #2c455d; border-color: #bbcedf; }
+    .s-green { color: #365b49; background: #e7eee9; border-color: #c9d9cf; }
+    .s-amber { color: #775525; background: #f5edde; border-color: #e3d5b9; }
+    .s-red { color: #813c3a; background: #f3e9e8; border-color: #e2cac8; }
+    .rows li { padding: 9px 0; border-top: 1px solid #d0d1d3; font-size: 14px; }
+    .rows li:first-child { border-top: 0; padding-top: 0; }
+  </style>
+</helmet>
+<div style="width: 1200px; min-height: 2560px; box-sizing: border-box; background-color: #f2f2f3; background-image: linear-gradient(#1d1f2006 1px, transparent 1px), linear-gradient(90deg, #1d1f2006 1px, transparent 1px); background-size: 28px 28px; padding: 0 56px 64px;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; height: 64px; border-bottom: 1px solid #d0d1d3;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg width="28" height="28" viewBox="0 0 48 48"><rect x="7" y="9" width="34" height="30" fill="none" stroke="#5980a6" stroke-width="2"></rect><path d="M7 19h34M19 19v20M3 9h8M7 5v8M37 39h8M41 35v8" fill="none" stroke="#1d1f20" stroke-width="1.5"></path></svg>
+      <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 22px; text-transform: uppercase; letter-spacing: 0.02em;">WorkOrder<span style="color: #416180;">®</span></span>
+    </div>
+    <div style="display: flex; gap: 24px; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">
+      <span>Design document · Release 4 → GA</span>
+      <span>01 / Overview</span>
+    </div>
+  </div>
+
+  <header style="padding: 64px 0 48px; border-bottom: 2px solid #1d1f20; display: flex; flex-direction: column; gap: 22px;">
+    <p class="eyebrow">Next iteration · Design document</p>
+    <h1 style="font-size: 76px; line-height: 0.98; max-width: 960px; text-wrap: balance;">From working software to a product a trade company will pay for.</h1>
+    <p style="font-size: 19px; color: #5d6065; max-width: 760px;">This document turns the Field Review's findings into a sequenced plan: what Release 4 through general availability deliver, how the app's surfaces change, and the engineering work underneath. It extends the existing Industry design system rather than replacing it.</p>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid #d0d1d3; background: #fafafb; margin-top: 12px;">
+      <div style="padding: 16px 18px; border-right: 1px solid #d0d1d3;">
+        <div style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Based on</div>
+        <div style="font-weight: 500; margin-top: 6px;">WorkOrder Field Review, live walkthrough</div>
+      </div>
+      <div style="padding: 16px 18px; border-right: 1px solid #d0d1d3;">
+        <div style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Codebase</div>
+        <div style="font-weight: 500; margin-top: 6px;">main @ 7b0100d · Release 3, work in the field</div>
+      </div>
+      <div style="padding: 16px 18px; border-right: 1px solid #d0d1d3;">
+        <div style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Owner</div>
+        <div style="font-weight: 500; margin-top: 6px;">[OWNER]</div>
+      </div>
+      <div style="padding: 16px 18px;">
+        <div style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Status</div>
+        <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;"><span class="status s-amber">Draft for review</span><span style="font-size: 13px; color: #5d6065;">13 Sep 2026</span></div>
+      </div>
+    </div>
+  </header>
+
+  <section style="padding: 52px 0; border-bottom: 1px solid #d0d1d3; display: flex; flex-direction: column; gap: 24px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <p class="eyebrow">01 · Where we are</p>
+      <h2 style="font-size: 40px;">The engineering is ahead of the storefront.</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px;">
+      <div style="background: #fafafb; border: 1px solid #d0d1d3; padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;"><h3 style="font-size: 23px;">Built in R1–R3</h3><span class="status s-green">Shipped</span></div>
+        <ul class="rows">
+          <li>Nested scopes, each bid, awarded and billed on its own</li>
+          <li>Project market and employment board</li>
+          <li>Time grid with clock times and bulk entry</li>
+          <li>Stripe Connect scope funding, releases, refunds</li>
+          <li>Pay applications, change orders, lien waivers</li>
+          <li>Credentials, reviews and mediated disputes</li>
+          <li>Field work: clock, daily reports, signed documents</li>
+        </ul>
+      </div>
+      <div style="background: #fafafb; border: 1px solid #d0d1d3; padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;"><h3 style="font-size: 23px;">Blocking a sale</h3><span class="status s-red">P0 / P1</span></div>
+        <ul class="rows">
+          <li>Nothing to read before login: no features, pricing or legal pages</li>
+          <li>QA fixtures visible in the live project market</li>
+          <li>Field work leaves the console shell</li>
+          <li>Icon-only mobile rail with no labels</li>
+          <li>No email verification, password recovery or notification delivery</li>
+        </ul>
+      </div>
+      <div style="background: #fafafb; border: 1px solid #d0d1d3; padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;"><h3 style="font-size: 23px;">Spending polish</h3><span class="status s-amber">P2</span></div>
+        <ul class="rows">
+          <li>Six near-identical empty-state panels in a first session</li>
+          <li>Empty 24-hour timesheet grid on first visit</li>
+          <li>Taglines where section labels belong</li>
+          <li>New profiles left at 0.00/hour with no skills</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding: 52px 0; border-bottom: 1px solid #d0d1d3; display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <p class="eyebrow">02 · Product thesis</p>
+      <h2 style="font-size: 46px; line-height: 1.05; max-width: 980px; text-wrap: balance;">WorkOrder is the job ledger for trade work: every project is a tree of scopes, and every scope carries its own bid, crew, hours, documents and money.</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid #d0d1d3; background: #fafafb;">
+      <div style="padding: 22px; border-right: 1px solid #d0d1d3; display: flex; flex-direction: column; gap: 8px;">
+        <span class="status s-blue" style="align-self: flex-start;">Pays</span>
+        <h3 style="font-size: 25px;">Trade organizations</h3>
+        <p style="color: #5d6065; font-size: 14px;">Need job costing, crew time and compliant billing without juggling three tools. They buy seats.</p>
+      </div>
+      <div style="padding: 22px; border-right: 1px solid #d0d1d3; display: flex; flex-direction: column; gap: 8px;">
+        <span class="status s-green" style="align-self: flex-start;">Supply</span>
+        <h3 style="font-size: 25px;">Independent contractors</h3>
+        <p style="color: #5d6065; font-size: 14px;">Need work that fits their trade and proof they will be paid. Free to join, visible once profiled.</p>
+      </div>
+      <div style="padding: 22px; display: flex; flex-direction: column; gap: 8px;">
+        <span class="status s-amber" style="align-self: flex-start;">Demand</span>
+        <h3 style="font-size: 25px;">Clients posting work</h3>
+        <p style="color: #5d6065; font-size: 14px;">Need to split a job, fund it in stages and see progress. Fees apply when a scope is funded.</p>
+      </div>
+    </div>
+    <p style="font-size: 14px; color: #5d6065;">Positioning line from the review: WorkOrder replaces the spreadsheet, the group text and the separate invoicing tool.</p>
+  </section>
+
+  <section style="padding: 52px 0; border-bottom: 1px solid #d0d1d3; display: flex; flex-direction: column; gap: 24px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <p class="eyebrow">03 · Design principles for this iteration</p>
+      <h2 style="font-size: 40px;">Finish the surface area that exists.</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px;">
+      <div style="background: #fafafb; border: 1px solid #d0d1d3; padding: 22px; display: flex; gap: 18px;">
+        <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 40px; line-height: 1; color: #5980a6;">1</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="font-size: 23px;">One shell, every context</h3><p style="color: #5d6065; font-size: 14px;">Field, office and client views share the sidebar, header and breadcrumb. A full-screen field mode is something a crew chooses, never the side effect of a nav click.</p></div>
+      </div>
+      <div style="background: #fafafb; border: 1px solid #d0d1d3; padding: 22px; display: flex; gap: 18px;">
+        <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 40px; line-height: 1; color: #5980a6;">2</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="font-size: 23px;">The scope tree is the headline</h3><p style="color: #5d6065; font-size: 14px;">Nested scopes lead the marketing page, open the project page and get a one-time explainer. The most defensible thing we built should be the most visible.</p></div>
+      </div>
+      <div style="background: #fafafb; border: 1px solid #d0d1d3; padding: 22px; display: flex; gap: 18px;">
+        <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 40px; line-height: 1; color: #5980a6;">3</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="font-size: 23px;">Persuade outside, label inside</h3><p style="color: #5d6065; font-size: 14px;">Marketing voice lives before login. After it, headings are plain nouns an operator scans on their twentieth visit: Billing, Time, Projects.</p></div>
+      </div>
+      <div style="background: #fafafb; border: 1px solid #d0d1d3; padding: 22px; display: flex; gap: 18px;">
+        <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 40px; line-height: 1; color: #5980a6;">4</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="font-size: 23px;">Show nothing until there is something</h3><p style="color: #5d6065; font-size: 14px;">One setup checklist replaces per-section empty panels. Heavy components such as the 24-hour grid wait for their first record. Never fake data to fill space.</p></div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 18px 22px; border: 1px solid #d0d1d3; background: #e9e9ea;">
+      <span style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Built on the Industry system</span>
+      <div style="display: flex; gap: 6px;">
+        <span style="width: 28px; height: 28px; background: #1d1f20;"></span>
+        <span style="width: 28px; height: 28px; background: #416180;"></span>
+        <span style="width: 28px; height: 28px; background: #5980a6;"></span>
+        <span style="width: 28px; height: 28px; background: #eef4fa; border: 1px solid #d0d1d3; box-sizing: border-box;"></span>
+        <span style="width: 28px; height: 28px; background: #fafafb; border: 1px solid #d0d1d3; box-sizing: border-box;"></span>
+        <span style="width: 28px; height: 28px; background: #993e38;"></span>
+      </div>
+      <span style="font-size: 14px; color: #5d6065;">Barlow and Barlow Condensed · square panels, no elevation · 3px controls · status is always text plus color</span>
+    </div>
+  </section>
+
+  <section style="padding: 52px 0 0; display: flex; flex-direction: column; gap: 22px;">
+    <p class="eyebrow">04 · In this document</p>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px;">
+      <div style="border-top: 2px solid #1d1f20; padding-top: 14px; display: flex; flex-direction: column; gap: 8px;">
+        <h3 style="font-size: 23px;">Plan</h3>
+        <ul class="rows"><li>Overview (this page)</li><li>Roadmap to market, decisions needed</li></ul>
+      </div>
+      <div style="border-top: 2px solid #1d1f20; padding-top: 14px; display: flex; flex-direction: column; gap: 8px;">
+        <h3 style="font-size: 23px;">Revitalized app</h3>
+        <ul class="rows"><li>Landing and pricing page</li><li>Console overview in the unified shell</li><li>Project scope tree</li><li>Field on a phone · mobile navigation</li></ul>
+      </div>
+      <div style="border-top: 2px solid #1d1f20; padding-top: 14px; display: flex; flex-direction: column; gap: 8px;">
+        <h3 style="font-size: 23px;">Engineering</h3>
+        <ul class="rows"><li>System architecture, current and target</li><li>Data model and new tables</li><li>Offline field sync sequence</li><li>Environments and release pipeline</li></ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+</body>
+</html>

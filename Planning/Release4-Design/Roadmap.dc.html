@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@600&display=swap">
+  <style>
+    body { margin: 0; background: #f2f2f3; color: #1d1f20; font-family: Barlow, system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+    a { color: #416180; } a:hover { color: #2c455d; }
+    h1, h2, h3 { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+    p { margin: 0; text-wrap: pretty; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    .eyebrow { font-size: 11px; letter-spacing: 0.11em; text-transform: uppercase; color: #416180; font-weight: 500; margin: 0; }
+    .status { display: inline-flex; align-items: center; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; padding: 2px 7px; border: 1px solid transparent; font-weight: 500; white-space: nowrap; }
+    .s-blue { background: #e1ebf5; color: #2c455d; border-color: #bbcedf; }
+    .s-green { color: #365b49; background: #e7eee9; border-color: #c9d9cf; }
+    .s-amber { color: #775525; background: #f5edde; border-color: #e3d5b9; }
+    .s-red { color: #813c3a; background: #f3e9e8; border-color: #e2cac8; }
+    .lanes { display: grid; grid-template-columns: repeat(26, minmax(0, 1fr)); grid-auto-rows: 30px; row-gap: 8px; padding: 12px 0; background-image: linear-gradient(90deg, transparent calc(23.077% - 1px), #c3c5c8 calc(23.077% - 1px), #c3c5c8 23.077%, transparent 23.077%, transparent calc(46.154% - 1px), #c3c5c8 calc(46.154% - 1px), #c3c5c8 46.154%, transparent 46.154%, transparent calc(76.923% - 1px), #c3c5c8 calc(76.923% - 1px), #c3c5c8 76.923%, transparent 76.923%); }
+    .bar { display: flex; align-items: center; padding: 0 6px; font-size: 11.5px; font-weight: 500; white-space: nowrap; overflow: hidden; background: #e1ebf5; border: 1px solid #a9bfd3; color: #2c455d; margin: 0 2px; }
+    .bar.p0 { background: #416180; border-color: #416180; color: #ffffff; }
+    .bar.rev { background: #eeede7; border-color: #c9c5b3; color: #58543b; }
+    .track { display: grid; grid-template-columns: 150px minmax(0, 1fr); border-top: 1px solid #d0d1d3; }
+    .track-label { padding: 14px 16px 14px 0; display: flex; flex-direction: column; gap: 2px; }
+    .track-label strong { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 19px; }
+    .track-label span { font-size: 12px; color: #5d6065; }
+    th { background: #e9e9ea; color: #5d6065; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; padding: 10px 14px; font-weight: 500; }
+    td { font-size: 13.5px; padding: 12px 14px; border-top: 1px solid #d0d1d3; vertical-align: top; }
+  </style>
+</helmet>
+<div style="width: 1200px; min-height: 2140px; box-sizing: border-box; background: #f2f2f3; padding: 0 56px 64px;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; height: 64px; border-bottom: 1px solid #d0d1d3;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg width="28" height="28" viewBox="0 0 48 48"><rect x="7" y="9" width="34" height="30" fill="none" stroke="#5980a6" stroke-width="2"></rect><path d="M7 19h34M19 19v20M3 9h8M7 5v8M37 39h8M41 35v8" fill="none" stroke="#1d1f20" stroke-width="1.5"></path></svg>
+      <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 22px; text-transform: uppercase; letter-spacing: 0.02em;">WorkOrder<span style="color: #416180;">®</span></span>
+    </div>
+    <div style="display: flex; gap: 24px; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">
+      <span>Design document · Release 4 → GA</span>
+      <span>02 / Roadmap</span>
+    </div>
+  </div>
+
+  <header style="padding: 52px 0 36px; display: flex; flex-direction: column; gap: 14px;">
+    <p class="eyebrow">02 · Roadmap to market</p>
+    <h1 style="font-size: 58px; line-height: 1.02; max-width: 900px; text-wrap: balance;">Four releases, ordered by what a buyer notices first.</h1>
+    <p style="font-size: 17px; color: #5d6065; max-width: 760px;">Durations are estimates in weeks from kickoff, matching the planning cadence in Overview.md. Dark bars are the Field Review's P0 items; beige bars carry revenue work.</p>
+  </header>
+
+  <div style="background: #fafafb; border: 1px solid #d0d1d3; padding: 8px 22px 12px;">
+    <div style="display: grid; grid-template-columns: 150px minmax(0, 1fr);">
+      <div></div>
+      <div style="display: grid; grid-template-columns: repeat(26, minmax(0, 1fr)); padding: 12px 0 10px; gap: 0;">
+        <div style="grid-column: 1 / 7; padding: 0 8px; display: flex; flex-direction: column;"><strong style="font-family: 'Barlow Condensed', sans-serif; font-size: 20px;">R4 Storefront &amp; shell</strong><span style="font-size: 11px; color: #5d6065; letter-spacing: 0.06em; text-transform: uppercase;">Weeks 1–6</span></div>
+        <div style="grid-column: 7 / 13; padding: 0 8px; display: flex; flex-direction: column;"><strong style="font-family: 'Barlow Condensed', sans-serif; font-size: 20px;">R5 Pilot-ready</strong><span style="font-size: 11px; color: #5d6065; letter-spacing: 0.06em; text-transform: uppercase;">Weeks 7–12</span></div>
+        <div style="grid-column: 13 / 21; padding: 0 8px; display: flex; flex-direction: column;"><strong style="font-family: 'Barlow Condensed', sans-serif; font-size: 20px;">R6 Paid pilot</strong><span style="font-size: 11px; color: #5d6065; letter-spacing: 0.06em; text-transform: uppercase;">Weeks 13–20</span></div>
+        <div style="grid-column: 21 / 27; padding: 0 8px; display: flex; flex-direction: column;"><strong style="font-family: 'Barlow Condensed', sans-serif; font-size: 20px;">R7 General availability</strong><span style="font-size: 11px; color: #5d6065; letter-spacing: 0.06em; text-transform: uppercase;">Weeks 21–26</span></div>
+      </div>
+    </div>
+
+    <div class="track">
+      <div class="track-label"><strong>Market surface</strong><span>What a prospect reads</span></div>
+      <div class="lanes">
+        <div class="bar p0" style="grid-column: 1 / 5; grid-row: 1;">Landing + pricing page</div>
+        <div class="bar" style="grid-column: 3 / 7; grid-row: 2;">Terms, privacy, contact</div>
+        <div class="bar" style="grid-column: 15 / 21; grid-row: 1;">Pilot case studies</div>
+        <div class="bar" style="grid-column: 21 / 25; grid-row: 1;">Launch site + help docs</div>
+      </div>
+    </div>
+
+    <div class="track">
+      <div class="track-label"><strong>Product experience</strong><span>What a user touches</span></div>
+      <div class="lanes">
+        <div class="bar" style="grid-column: 1 / 5; grid-row: 1;">Field inside the shell</div>
+        <div class="bar" style="grid-column: 3 / 8; grid-row: 2;">Mobile tab bar + More sheet</div>
+        <div class="bar" style="grid-column: 5 / 9; grid-row: 1;">Setup checklist</div>
+        <div class="bar" style="grid-column: 8 / 12; grid-row: 2;">Scope-tree explainer</div>
+        <div class="bar" style="grid-column: 9 / 13; grid-row: 1;">Profile step at signup</div>
+        <div class="bar" style="grid-column: 13 / 18; grid-row: 1;">Org admin + roles UI</div>
+        <div class="bar" style="grid-column: 21 / 26; grid-row: 1;">Accessibility fixes</div>
+      </div>
+    </div>
+
+    <div class="track">
+      <div class="track-label"><strong>Platform &amp; trust</strong><span>What keeps it running</span></div>
+      <div class="lanes">
+        <div class="bar p0" style="grid-column: 1 / 4; grid-row: 1;">Split prod / QA</div>
+        <div class="bar" style="grid-column: 2 / 6; grid-row: 2;">QA seed tooling</div>
+        <div class="bar" style="grid-column: 7 / 11; grid-row: 1;">Email verify + reset</div>
+        <div class="bar" style="grid-column: 9 / 13; grid-row: 2;">Email notifications</div>
+        <div class="bar" style="grid-column: 11 / 15; grid-row: 1;">Shared limiter + worker</div>
+        <div class="bar" style="grid-column: 15 / 20; grid-row: 1;">Audit log + data export</div>
+        <div class="bar" style="grid-column: 19 / 24; grid-row: 2;">Monitoring + restore drill</div>
+        <div class="bar" style="grid-column: 22 / 27; grid-row: 1;">Security review</div>
+      </div>
+    </div>
+
+    <div class="track">
+      <div class="track-label"><strong>Revenue</strong><span>How it gets paid for</span></div>
+      <div class="lanes">
+        <div style="grid-column: 1 / 5; grid-row: 1; display: flex; align-items: center; gap: 8px; padding-left: 6px;"><span style="width: 12px; height: 12px; background: #775525; transform: rotate(45deg); flex-shrink: 0;"></span><span style="font-size: 12.5px; font-weight: 500; color: #775525; white-space: nowrap;">D1 pricing decided</span></div>
+        <div class="bar rev" style="grid-column: 13 / 17; grid-row: 1;">Plans + entitlements</div>
+        <div class="bar rev" style="grid-column: 15 / 19; grid-row: 2;">Subscriptions (Stripe)</div>
+        <div class="bar rev" style="grid-column: 17 / 21; grid-row: 1;">Fee on funded scopes</div>
+        <div class="bar rev" style="grid-column: 21 / 25; grid-row: 1;">Self-serve upgrade</div>
+      </div>
+    </div>
+  </div>
+
+  <section style="padding: 48px 0 0; display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <p class="eyebrow">Release goals and exit criteria</p>
+      <h2 style="font-size: 36px;">Each release ends when a test a buyer would run passes.</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid #d0d1d3; background: #fafafb;">
+      <div style="padding: 20px; border-right: 1px solid #d0d1d3; display: flex; flex-direction: column; gap: 12px;">
+        <span class="status s-blue" style="align-self: flex-start;">R4 · Weeks 1–6</span>
+        <h3 style="font-size: 25px;">Storefront &amp; shell</h3>
+        <p style="font-size: 14px;">A prospect learns what WorkOrder does and costs before signing up, and never meets test data.</p>
+        <div style="border-top: 1px solid #d0d1d3; padding-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Done when</span>
+          <ul style="font-size: 13.5px; color: #5d6065; display: flex; flex-direction: column; gap: 6px;"><li>Pricing is one click from the landing page</li><li>Production market shows zero QA fixtures</li><li>Field keeps the console shell at every width</li></ul>
+        </div>
+      </div>
+      <div style="padding: 20px; border-right: 1px solid #d0d1d3; display: flex; flex-direction: column; gap: 12px;">
+        <span class="status s-blue" style="align-self: flex-start;">R5 · Weeks 7–12</span>
+        <h3 style="font-size: 25px;">Pilot-ready</h3>
+        <p style="font-size: 14px;">A design-partner company onboards its crew without us on the phone.</p>
+        <div style="border-top: 1px solid #d0d1d3; padding-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Done when</span>
+          <ul style="font-size: 13.5px; color: #5d6065; display: flex; flex-direction: column; gap: 6px;"><li>Accounts verify email and recover passwords</li><li>New users set a rate and one skill before bidding</li><li>Offers, awards and releases reach email</li></ul>
+        </div>
+      </div>
+      <div style="padding: 20px; border-right: 1px solid #d0d1d3; display: flex; flex-direction: column; gap: 12px;">
+        <span class="status s-amber" style="align-self: flex-start;">R6 · Weeks 13–20</span>
+        <h3 style="font-size: 25px;">Paid pilot</h3>
+        <p style="font-size: 14px;">[N] pilot organizations pay on the plan chosen in D1.</p>
+        <div style="border-top: 1px solid #d0d1d3; padding-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Done when</span>
+          <ul style="font-size: 13.5px; color: #5d6065; display: flex; flex-direction: column; gap: 6px;"><li>Plan limits are enforced on the server</li><li>Subscription and scope fees reconcile with Stripe</li><li>Org owners can export their data</li></ul>
+        </div>
+      </div>
+      <div style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+        <span class="status s-green" style="align-self: flex-start;">R7 · Weeks 21–26</span>
+        <h3 style="font-size: 25px;">General availability</h3>
+        <p style="font-size: 14px;">Anyone can sign up, pay and get help without us in the loop.</p>
+        <div style="border-top: 1px solid #d0d1d3; padding-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Done when</span>
+          <ul style="font-size: 13.5px; color: #5d6065; display: flex; flex-direction: column; gap: 6px;"><li>Core flows pass a WCAG 2.2 AA audit</li><li>A restore from backup completes on schedule</li><li>Upgrade to a paid plan works end to end</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding: 48px 0 0; display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <p class="eyebrow">Decisions needed</p>
+      <h2 style="font-size: 36px;">Five calls that unblock the plan.</h2>
+    </div>
+    <div style="border: 1px solid #d0d1d3; background: #fafafb; overflow: hidden;">
+      <table style="border-collapse: collapse; width: 100%;">
+        <thead><tr><th style="width: 52px;">ID</th><th style="width: 170px;">Decision</th><th style="width: 260px;">Options</th><th>Recommendation</th><th style="width: 110px;">Needed by</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight: 700; color: #775525;">D1</td><td style="font-weight: 500;">Pricing model</td><td style="color: #5d6065;">Org seat subscription · fee on funded scopes · both</td><td>Free for individuals. Organizations pay [PRICE] per seat per month, plus [X]% on scopes funded through WorkOrder. Charges follow who gets the value.</td><td>Week 2</td></tr>
+          <tr><td style="font-weight: 700; color: #775525;">D2</td><td style="font-weight: 500;">Mobile navigation</td><td style="color: #5d6065;">Bottom tab bar · slide-out drawer</td><td>Tab bar with four destinations plus a More sheet, reachable one-handed on site.</td><td>Week 3</td></tr>
+          <tr><td style="font-weight: 700; color: #775525;">D3</td><td style="font-weight: 500;">Marketing site home</td><td style="color: #5d6065;">Same Express app · separate static site</td><td>Same app on its own route group: reuses tokens and fonts, one deploy, cacheable at the edge.</td><td>Week 1</td></tr>
+          <tr><td style="font-weight: 700; color: #775525;">D4</td><td style="font-weight: 500;">Pilot cohort</td><td style="color: #5d6065;">Size and trade mix</td><td>[N] organizations across [TRADES], each running at least one nested-scope project.</td><td>Week 10</td></tr>
+          <tr><td style="font-weight: 700; color: #775525;">D5</td><td style="font-weight: 500;">Offline storage</td><td style="color: #5d6065;">Keep localStorage queue · move to IndexedDB</td><td>Move to IndexedDB before photos and documents queue offline; localStorage is fine for time entries.</td><td>Week 18</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; padding-top: 4px;">
+      <span style="font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: #5d6065;">Out of scope for this plan</span>
+      <span style="font-size: 14px; color: #5d6065;">Native iOS and Android apps · payroll · tax calculation · multi-currency · reassigning awarded scopes</span>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+</body>
+</html>

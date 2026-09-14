@@ -1,0 +1,147 @@
+{
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Plan"
+    },
+    {
+      "id": "page-2",
+      "name": "Revitalized app"
+    },
+    {
+      "id": "page-3",
+      "name": "Engineering"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "01 Overview",
+      "page": "page-1",
+      "x": 0,
+      "y": 0,
+      "w": 1200,
+      "h": 2560
+    },
+    {
+      "file": "Roadmap.dc.html",
+      "title": "02 Roadmap to market",
+      "page": "page-1",
+      "x": 1300,
+      "y": 0,
+      "w": 1200,
+      "h": 2140
+    },
+    {
+      "file": "Landing.dc.html",
+      "title": "Landing and pricing",
+      "page": "page-2",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 4000
+    },
+    {
+      "file": "Console.dc.html",
+      "title": "Console overview",
+      "page": "page-2",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 1000
+    },
+    {
+      "file": "ProjectScopes.dc.html",
+      "title": "Project scope tree",
+      "page": "page-2",
+      "x": 1540,
+      "y": 1140,
+      "w": 1440,
+      "h": 1000
+    },
+    {
+      "file": "FieldMobile.dc.html",
+      "title": "Field on a phone",
+      "page": "page-2",
+      "x": 3080,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    {
+      "file": "MobileNav.dc.html",
+      "title": "Mobile More sheet",
+      "page": "page-2",
+      "x": 3560,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    {
+      "file": "Architecture.dc.html",
+      "title": "E1 System architecture",
+      "page": "page-3",
+      "x": 0,
+      "y": 0,
+      "w": 1400,
+      "h": 1240
+    },
+    {
+      "file": "DataModel.dc.html",
+      "title": "E2 Data model",
+      "page": "page-3",
+      "x": 1500,
+      "y": 0,
+      "w": 1400,
+      "h": 1120
+    },
+    {
+      "file": "FieldSync.dc.html",
+      "title": "E3 Offline field sync",
+      "page": "page-3",
+      "x": 0,
+      "y": 1380,
+      "w": 1400,
+      "h": 1180
+    },
+    {
+      "file": "Environments.dc.html",
+      "title": "E4 Environments and pipeline",
+      "page": "page-3",
+      "x": 1500,
+      "y": 1380,
+      "w": 1400,
+      "h": 900
+    }
+  ],
+  "annotations": [
+    {
+      "id": "note-landing",
+      "page": "page-2",
+      "x": 0,
+      "y": 4080,
+      "w": 640,
+      "text": "Landing: fixes review finding 'no case made to a buyer'. Project values are sample data. [PRICE], [X]%, the quote and logos stay as placeholders until decision D1 and the R6 pilot."
+    },
+    {
+      "id": "note-console",
+      "page": "page-2",
+      "x": 1540,
+      "y": 2220,
+      "w": 700,
+      "text": "Console: sidebar grouped into Work / Money / People / Account, and Field work stays inside the shell. One 'Get set up' checklist replaces six empty-state panels. Plain 'Overview' heading instead of a tagline. Scope tree: the nested-scope model leads the project page, with a one-time explainer."
+    },
+    {
+      "id": "note-mobile",
+      "page": "page-2",
+      "x": 3080,
+      "y": 924,
+      "w": 870,
+      "text": "Mobile (D2): a labeled tab bar (Field, Projects, Time, Inbox, More) replaces the icon-only rail. The More sheet holds every other section plus the context switch. 44px+ targets; clock-out button is 56px for gloved hands."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

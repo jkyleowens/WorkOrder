@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@600&display=swap">
+  <style>
+    body { margin: 0; background: #f2f2f3; color: #1d1f20; font-family: Barlow, system-ui, sans-serif; font-size: 15px; line-height: 1.45; }
+    a { color: #416180; } a:hover { color: #2c455d; }
+    h1, h2, h3 { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+    p { margin: 0; text-wrap: pretty; }
+    .eyebrow { font-size: 11px; letter-spacing: 0.11em; text-transform: uppercase; color: #416180; font-weight: 500; margin: 0; }
+    .group { background: #fafafb; border: 1px solid #d0d1d3; display: flex; flex-direction: column; }
+    .group-head { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 14px; background: #e9e9ea; border-bottom: 1px solid #d0d1d3; }
+    .group-head h2 { font-size: 19px; }
+    .group-head span { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #5d6065; }
+    .tables { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+    .t { padding: 8px 14px; border-top: 1px solid #e3e4e6; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .t b { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 12.5px; font-weight: 700; }
+    .t small { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 10.5px; color: #5d6065; line-height: 1.4; }
+    .t small i { font-style: normal; color: #416180; }
+    .new { background: #eef4fa; border: 1.5px dashed #5980a6; }
+    .tag { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; color: #ffffff; background: #416180; padding: 1px 5px; border-radius: 2px; font-family: Barlow, sans-serif; margin-left: 6px; }
+    .arrow { display: flex; align-items: center; justify-content: center; }
+  </style>
+</helmet>
+<div style="width: 1400px; min-height: 1120px; box-sizing: border-box; background: #f2f2f3; padding: 40px 48px 48px; display: flex; flex-direction: column; gap: 24px;">
+
+  <header style="display: flex; justify-content: space-between; align-items: flex-end; gap: 32px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <p class="eyebrow">Engineering · 02</p>
+      <h1 style="font-size: 48px; line-height: 1.02;">Data model: 34 tables around one hub</h1>
+      <p style="color: #5d6065; max-width: 820px;">From migrations 001–011. Nearly every workflow hangs off <span style="font-family: ui-monospace, Menlo, monospace; font-size: 14px;">project_subdivisions</span>: fourteen tables reference a scope directly. New tables for R5–R6 are dashed and follow the same forward-only migration rule.</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; flex-shrink: 0;">
+      <span><span style="font-family: ui-monospace, Menlo, monospace; color: #416180;">→ table</span> foreign key</span>
+      <span><span style="font-family: ui-monospace, Menlo, monospace;">user | org</span> exclusive owner pair</span>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 34px 400px 34px minmax(0, 1fr); align-items: stretch;">
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="group">
+        <div class="group-head"><h2>Identity &amp; organizations</h2><span>001 · 004 · 005 · 009</span></div>
+        <div class="tables">
+          <div class="t"><b>users</b><small>skills · hourly_rate<br>availability · platform_role</small></div>
+          <div class="t"><b>organizations</b><small><i>→ users</i> created_by</small></div>
+          <div class="t"><b>organization_members</b><small><i>→ users</i> · <i>→ organizations</i></small></div>
+          <div class="t"><b>organization_roles</b><small><i>→ organizations</i> · pay rates</small></div>
+          <div class="t"><b>notifications</b><small><i>→ users</i> · inbox rows</small></div>
+          <div class="t"><b>sessions</b><small>connect-pg-simple store</small></div>
+        </div>
+      </div>
+      <div class="group">
+        <div class="group-head"><h2>Employment</h2><span>001</span></div>
+        <div class="tables">
+          <div class="t"><b>job_postings</b><small><i>→ users</i> | <i>organizations</i></small></div>
+          <div class="t"><b>job_applications</b><small><i>→ job_postings</i> · <i>→ users</i></small></div>
+        </div>
+      </div>
+      <div class="group">
+        <div class="group-head"><h2>Trust</h2><span>009</span></div>
+        <div class="tables">
+          <div class="t"><b>files</b><small><i>→ users</i> uploaded_by</small></div>
+          <div class="t"><b>credentials</b><small>user | org owner · <i>→ files</i></small></div>
+          <div class="t"><b>reviews</b><small><i>→ project_subdivisions</i> unique</small></div>
+          <div class="t"><b>disputes</b><small><i>→ project_subdivisions</i></small></div>
+          <div class="t"><b>dispute_events</b><small><i>→ disputes</i> · <i>→ files</i></small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"><svg width="30" height="14" viewBox="0 0 30 14"><path d="M0 7h26M21 2l6 5-6 5" fill="none" stroke="#416180" stroke-width="1.5"></path></svg></div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px; justify-content: center;">
+      <div class="group" style="border: 2px solid #1d1f20;">
+        <div class="group-head" style="background: #1d1f20; color: #fafafb; border-bottom: 0;"><h2>Market &amp; the scope hub</h2><span style="color: #c3c5c8;">001 · 003 · 011</span></div>
+        <div class="t" style="border-top: 0;"><b>projects</b><small><i>→ users</i> client_user_id · status</small></div>
+        <div style="margin: 6px 14px 10px; padding: 14px; background: #eef4fa; border: 1px solid #bbcedf; display: flex; flex-direction: column; gap: 6px;">
+          <b style="font-family: ui-monospace, Menlo, monospace; font-size: 15px; color: #2c455d;">project_subdivisions</b>
+          <small style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #5d6065; line-height: 1.5;"><i style="font-style: normal; color: #416180;">→ projects</i><br><i style="font-style: normal; color: #416180;">→ project_subdivisions</i> parent_subdivision_id (tree)<br><i style="font-style: normal; color: #416180;">→ project_subdivisions</i> predecessor_id (schedule)<br>awarded_user_id | awarded_org_id</small>
+          <div style="display: flex; align-items: baseline; gap: 8px; border-top: 1px solid #bbcedf; padding-top: 8px; margin-top: 2px;"><span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 34px; line-height: 1; color: #2c455d;">14</span><span style="font-size: 12.5px; color: #2c455d;">tables reference a scope directly</span></div>
+        </div>
+        <div class="t"><b>bids</b><small><i>→ project_subdivisions</i> · user | org bidder</small></div>
+      </div>
+      <div class="group">
+        <div class="group-head"><h2>Execution &amp; materials</h2><span>001 · 010 · 011</span></div>
+        <div class="tables">
+          <div class="t"><b>timesheets</b><small><i>→ users</i> · <i>→ scopes</i><br>org_id · clock times</small></div>
+          <div class="t"><b>field_time_batches</b><small><i>→ users</i> · request_key<br>UNIQUE per user</small></div>
+          <div class="t"><b>daily_reports</b><small><i>→ scopes</i> · author</small></div>
+          <div class="t"><b>field_documents</b><small><i>→ projects</i> · scope? · <i>→ files</i></small></div>
+          <div class="t"><b>field_document_events</b><small><i>→ field_documents</i></small></div>
+          <div class="t"><b>inventory_items</b><small>user | org owner</small></div>
+          <div class="t"><b>project_inventory</b><small><i>→ scopes</i> · <i>→ items</i></small></div>
+          <div class="t"><b>inventory_movements</b><small>append-only ledger</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"><svg width="30" height="14" viewBox="0 0 30 14"><path d="M30 7H4M9 2L3 7l6 5" fill="none" stroke="#416180" stroke-width="1.5"></path></svg></div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="group">
+        <div class="group-head"><h2>Billing &amp; funding</h2><span>006 · 007 · 008</span></div>
+        <div class="tables">
+          <div class="t"><b>scope_change_orders</b><small><i>→ scopes</i> · proposed / decided</small></div>
+          <div class="t"><b>pay_applications</b><small><i>→ scopes</i> · submitted / decided</small></div>
+          <div class="t"><b>billing_payments</b><small><i>→ pay_applications</i></small></div>
+          <div class="t"><b>lien_waivers</b><small><i>→ pay_applications</i><br>claimant · payer</small></div>
+          <div class="t"><b>payment_accounts</b><small>user | org · Stripe account</small></div>
+          <div class="t"><b>scope_fundings</b><small><i>→ scopes</i> · funded_by</small></div>
+          <div class="t"><b>scope_releases</b><small><i>→ fundings</i> · <i>→ pay_apps</i><br><i>→ payment_accounts</i></small></div>
+          <div class="t"><b>scope_refunds</b><small><i>→ scope_fundings</i></small></div>
+          <div class="t"><b>provider_payouts</b><small><i>→ payment_accounts</i></small></div>
+          <div class="t"><b>provider_events</b><small>Stripe webhook log</small></div>
+        </div>
+      </div>
+      <div class="group new">
+        <div class="group-head" style="background: transparent; border-bottom: 1px dashed #5980a6;"><h2>Planned tables</h2><span style="color: #416180;">Migrations 012+</span></div>
+        <div class="tables">
+          <div class="t" style="border-top-color: #c7d7e7;"><b>email_tokens<span class="tag">R5</span></b><small><i>→ users</i> · purpose verify | reset<br>hashed token · expires_at</small></div>
+          <div class="t" style="border-top-color: #c7d7e7;"><b>notification_deliveries<span class="tag">R5</span></b><small><i>→ notifications</i> · channel<br>attempts · sent_at</small></div>
+          <div class="t" style="border-top-color: #c7d7e7;"><b>plans<span class="tag">R6</span></b><small>code · seat price · scope fee bps<br>limits JSONB</small></div>
+          <div class="t" style="border-top-color: #c7d7e7;"><b>subscriptions<span class="tag">R6</span></b><small><i>→ organizations</i> · <i>→ plans</i><br>stripe ids · seats · status</small></div>
+          <div class="t" style="border-top-color: #c7d7e7;"><b>platform_fees<span class="tag">R6</span></b><small><i>→ scope_fundings</i> unique<br>amount · rate captured</small></div>
+          <div class="t" style="border-top-color: #c7d7e7;"><b>audit_events<span class="tag">R6</span></b><small><i>→ users</i> actor · entity, id<br>before / after JSONB</small></div>
+        </div>
+        <div style="padding: 8px 14px 12px; font-size: 12.5px; color: #2c455d; border-top: 1px dashed #5980a6;">Plus <span style="font-family: ui-monospace, Menlo, monospace;">users.email_verified_at</span> (R5). Fee rate is copied onto each row, like hourly rates on timesheets.</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

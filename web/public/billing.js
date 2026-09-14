@@ -242,6 +242,8 @@ export async function renderWaiverChain(c, projectId) {
       : empty(
           "No waivers yet",
           "Waivers appear when contractors submit pay applications on awarded work.",
+          "",
+          "billing",
         )) +
     `<p class="document-footer">WorkOrder · Waiver chain generated ${esc(new Date().toLocaleString())}. Includes only work packages visible to your account.</p></article>`
   );
@@ -441,6 +443,7 @@ export async function renderBilling(c, part, page) {
             "Your next award starts here",
             "Award a project scope or win a bid to open its billing workspace.",
             link("Explore projects", "projects"),
+            "billing",
           )) +
       `<div class="pager">${page ? link("Previous", `billing?page=${page - 1}`) : ""}<span>Page ${page + 1}</span>${rows.length === 20 ? link("Next", `billing?page=${page + 1}`) : ""}</div>`
     );
@@ -513,6 +516,8 @@ export async function renderBilling(c, part, page) {
         : empty(
             "Make progress count",
             "Prepare an application from this scope’s recorded costs. Review the exact figures before submitting.",
+            "",
+            "billing",
           ),
       can.contractor && !b.applications.some((a) => a.status === "submitted")
         ? button(
@@ -540,6 +545,8 @@ export async function renderBilling(c, part, page) {
         : empty(
             "Keep scope changes on the record",
             "Either contracting party can propose a priced change. Only the other party can accept it, and only accepted changes affect the contract.",
+            "",
+            "billing",
           ),
       (can.payer || can.contractor) && b.subdivision.status !== "completed"
         ? button("Propose change", "billing-change", b.subdivision.id)
@@ -751,6 +758,8 @@ export async function billingAction(c, name, id) {
         empty(
           "Waiting for the signed conditional lien waiver",
           "The contractor signs the conditional waiver for this application before funds can be released.",
+          "",
+          "billing",
         ),
         null,
       );
@@ -760,6 +769,8 @@ export async function billingAction(c, name, id) {
         empty(
           "The contractor cannot receive funds yet",
           "They need to finish Stripe payout onboarding. Releases become available as soon as they do.",
+          "",
+          "billing",
         ),
         null,
       );

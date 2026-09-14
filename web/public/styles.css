@@ -360,10 +360,12 @@ input::placeholder {
 }
 /* Account entry */
 .auth-layout {
+  background: #fbfcf8;
+}
+.auth-hero {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1.05fr 1fr;
-  background: #fbfcf8;
 }
 .auth-story {
   background: #174c3c;
@@ -542,12 +544,6 @@ input::placeholder {
 }
 .auth-note svg {
   width: 16px;
-}
-.auth-footer {
-  position: absolute;
-  bottom: 28px;
-  font-size: 10px;
-  color: #899487;
 }
 .auth-mobile-brand {
   display: none;
@@ -1315,7 +1311,7 @@ dialog form {
   }
 }
 @media (max-width: 800px) {
-  .auth-layout {
+  .auth-hero {
     grid-template-columns: 1fr;
   }
   .auth-story {

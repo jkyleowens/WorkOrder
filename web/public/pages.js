@@ -118,6 +118,8 @@ export async function renderPage(c, route, part, page = 0) {
             unreadOnly
               ? "You have no unread notifications."
               : "We’ll let you know when applications, pay requests, offers, and bids need your attention.",
+            "",
+            unreadOnly ? "check" : "inbox",
           ))
     );
   }
@@ -147,6 +149,38 @@ export async function renderPage(c, route, part, page = 0) {
       : assignments.filter(
           (s) => active(s) && (!c.org || s.awarded_org_id === c.org.id),
         );
+    const setupSteps = [
+      ["Create your account", true, ""],
+      [
+        "Add your hourly rate and a skill",
+        Number(c.user.hourly_rate) > 0 && c.user.skills.length > 0,
+        link("Complete profile", "profile", "primary"),
+      ],
+      [
+        "Bid on a scope or post a project",
+        work.length > 0 || projects.length > 0,
+        link("Open market", "projects", "primary"),
+      ],
+      [
+        "Log your first hours",
+        Number(report.hours) > 0,
+        link("Log time", "time", "primary"),
+      ],
+    ];
+    const setupDone = setupSteps.filter(([, done]) => done).length;
+    const offerCount = applications.filter(
+      (a) => a.status === "offered",
+    ).length;
+    const nextUp = [
+      offerCount
+        ? `<a class="list-row" href="#jobs/applications"><span class="square-icon">${icon("jobs")}</span><span class="grow"><strong>${offerCount} offer${offerCount === 1 ? "" : "s"} to review</strong><small>Respond to employers and join a team.</small></span>${icon("arrow")}</a>`
+        : "",
+      !c.memberships.length
+        ? `<a class="list-row" href="#organizations"><span class="square-icon">${icon("people")}</span><span class="grow"><strong>Your people, in one place</strong><small>Create or manage an organization.</small></span>${icon("arrow")}</a>`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("");
     return (
       heading(
         c.org
@@ -162,7 +196,7 @@ export async function renderPage(c, route, part, page = 0) {
           ? button("Post a project", "project", "", "primary")
           : button("Log time", "log-time", "", "primary"),
       ) +
-      `<section class="welcome-band"><div><span class="eyebrow">${clientMode ? "Client workbench" : work.length ? "Contractor workbench" : "Start your next contract"}</span><h2>${clientMode ? "Move your projects forward." : work.length ? "Record the work. Keep progress visible." : "Find the right work. Build your reputation."}</h2><p>${clientMode ? "Review your work packages, agree scope changes, and certify applications." : work.length ? "Your assignments, hours, and billing records are connected to the same scopes." : "Build your profile, explore open projects, or post work for your team."}</p><div class="actions">${link(clientMode ? "Review projects" : work.length ? "Your assignments" : "Explore projects", clientMode ? "projects/mine" : work.length ? "projects/work" : "projects", "primary")}${link(clientMode || work.length ? "Open billing" : "Find a job", clientMode || work.length ? "billing" : "jobs")}</div></div><div class="workmark" aria-hidden="true"><span>W</span><small>YOUR WORK.<br>IN ORDER.</small></div></section>` +
+      `<section class="welcome-band"><div><span class="eyebrow">${clientMode ? "Client workbench" : work.length ? "Contractor workbench" : "Start your next contract"}</span><h2>${clientMode ? "Move your projects forward." : work.length ? "Record the work. Keep progress visible." : "Find the right work. Build your reputation."}</h2><p>${clientMode ? "Review your work packages, agree scope changes, and certify applications." : work.length ? "Your assignments, hours, and billing records are connected to the same scopes." : "Build your profile, explore open projects, or post work for your team."}</p><div class="actions">${link(clientMode ? "Review projects" : work.length ? "Your assignments" : "Explore projects", clientMode ? "projects/mine" : work.length ? "projects/work" : "projects", "primary")}${link(clientMode || work.length ? "Open billing" : "Find a job", clientMode || work.length ? "billing" : "jobs")}</div></div></section>` +
       stats([
         [
           "Hours this week",
@@ -209,7 +243,29 @@ export async function renderPage(c, route, part, page = 0) {
           clientMode ? "projects/mine" : "projects/work",
           "text",
         ),
-      )}${panel("Next steps", `<a class="list-row" href="#jobs/applications"><span class="square-icon">${icon("jobs")}</span><span class="grow"><strong>${applications.filter((a) => a.status === "offered").length} offers to review</strong><small>Respond to employers and join a team.</small></span>${icon("arrow")}</a><a class="list-row" href="#profile"><span class="square-icon">${icon("profile")}</span><span class="grow"><strong>Make your profile yours</strong><small>Add skills, availability, and your hourly rate.</small></span>${icon("arrow")}</a><a class="list-row" href="#organizations"><span class="square-icon">${icon("people")}</span><span class="grow"><strong>Your people, in one place</strong><small>Create or manage an organization.</small></span>${icon("arrow")}</a>`)}</div>`
+      )}${
+        setupDone < setupSteps.length
+          ? panel(
+              "Get set up",
+              `<div class="setup-progress" role="progressbar" aria-valuenow="${setupDone}" aria-valuemin="0" aria-valuemax="${setupSteps.length}" aria-label="Setup progress"><div style="width:${(setupDone / setupSteps.length) * 100}%"></div></div>` +
+                setupSteps
+                  .map(
+                    ([label, done, cta], i) =>
+                      `<div class="setup-step${done ? " is-done" : ""}"><span class="setup-marker">${done ? icon("check") : i + 1}</span><span class="grow">${esc(label)}</span>${!done ? cta : ""}</div>`,
+                  )
+                  .join(""),
+            )
+          : panel(
+              "Next up",
+              nextUp ||
+                empty(
+                  "You’re all caught up",
+                  "Nothing needs your attention right now.",
+                  "",
+                  "check",
+                ),
+            )
+      }</div>`
     );
   }
   if (route === "profile")
@@ -223,7 +279,7 @@ export async function renderPage(c, route, part, page = 0) {
           button("Edit profile", "profile", "", "primary") +
           button("Sign out", "logout", "", "secondary"),
       ) +
-      `<div class="profile-layout"><section class="panel profile-card"><span class="avatar large">${initials(c.user.full_name)}</span><h2>${esc(c.user.full_name)}</h2><p>${esc(c.user.email)}</p>${status(c.user.availability_status)}<hr><span class="muted">Hourly rate</span><strong class="large-number">${money(c.user.hourly_rate)} <small>/ hour</small></strong></section>${panel("Skills & experience", `<p class="muted">Your skills help clients and employers find the right fit.</p><div class="tags">${c.user.skills.length ? c.user.skills.map((s) => `<span>${esc(s)}</span>`).join("") : "<p>No skills added yet. Edit your profile to get started.</p>"}</div><hr><h3>Your organizations</h3>${c.memberships.length ? c.memberships.map((m) => `<a class="list-row" href="#organization/${m.org_id}"><span class="grow"><strong>${esc(m.organization.name)}</strong><small>${esc(m.organization.trade_focus || "Organization")}</small></span>${status(m.internal_role)}</a>`).join("") : empty("Better together", "Create an organization or apply for a role to join one.", link("Explore organizations", "organizations"))}`)}</div>`
+      `<div class="profile-layout"><section class="panel profile-card"><span class="avatar large">${initials(c.user.full_name)}</span><h2>${esc(c.user.full_name)}</h2><p>${esc(c.user.email)}</p>${status(c.user.availability_status)}<hr><span class="muted">Hourly rate</span><strong class="large-number">${money(c.user.hourly_rate)} <small>/ hour</small></strong></section>${panel("Skills & experience", `<p class="muted">Your skills help clients and employers find the right fit.</p><div class="tags">${c.user.skills.length ? c.user.skills.map((s) => `<span>${esc(s)}</span>`).join("") : "<p>No skills added yet. Edit your profile to get started.</p>"}</div><hr><h3>Your organizations</h3>${c.memberships.length ? c.memberships.map((m) => `<a class="list-row" href="#organization/${m.org_id}"><span class="grow"><strong>${esc(m.organization.name)}</strong><small>${esc(m.organization.trade_focus || "Organization")}</small></span>${status(m.internal_role)}</a>`).join("") : empty("Better together", "Create an organization or apply for a role to join one.", link("Explore organizations", "organizations"), "people")}`)}</div>`
     );
   if (route === "people") {
     d.people = await paged("/users", page);
@@ -533,6 +589,7 @@ export async function renderPage(c, route, part, page = 0) {
             "Your next role is out there",
             "Apply for a position, then review offers here.",
             link("Browse jobs", "jobs"),
+            "jobs",
           );
     else
       body = d.rows.length
@@ -543,6 +600,7 @@ export async function renderPage(c, route, part, page = 0) {
               ? "Post a role and invite applicants to join your organization or work with you."
               : "Check back for new opportunities.",
             button("Post a job", "job", "", "primary"),
+            "jobs",
           );
     return (
       heading(
@@ -639,6 +697,7 @@ export async function renderPage(c, route, part, page = 0) {
             "Start something together",
             "Create an organization to bid on projects, hire people, and share resources.",
             button("Create organization", "organization", "", "primary"),
+            "people",
           ))
     );
   }
@@ -690,6 +749,8 @@ export async function renderPage(c, route, part, page = 0) {
               : empty(
                   "Define your company roles",
                   "Set responsibilities, required skills and base hourly pay for each role.",
+                  "",
+                  "people",
                 ),
             button("Create company role", "company-role", "", "primary"),
           )
@@ -764,6 +825,7 @@ export async function renderPage(c, route, part, page = 0) {
             "A place for every resource",
             "Add your tools and materials, then record their use on awarded work.",
             canEdit ? button("Add inventory", "inventory", "", "primary") : "",
+            "inventory",
           )) +
       pager(`inventory/${orgId || ""}`, page, d.items.length)
     );
@@ -819,7 +881,14 @@ export async function renderPage(c, route, part, page = 0) {
           : []),
       ]) +
       panel("Log time", timeEntryForm(c)) +
-      (!org ? panel("Daily grid", timeGrid()) : "") +
+      (!org
+        ? panel(
+            "Daily grid",
+            d.entries.length
+              ? timeGrid()
+              : `<p class="muted">Your grid appears here once you log an entry.</p><details class="labor-details"><summary>Show the empty grid</summary>${timeGrid()}</details>`,
+          )
+        : "") +
       panel(
         org ? "Team timesheets" : "Time entries",
         d.entries.length
@@ -884,6 +953,7 @@ export async function renderPage(c, route, part, page = 0) {
               "No hours in this period",
               "Log time against awarded work to build your timesheet.",
               button("Log time", "log-time", "", "primary"),
+              "time",
             ),
       )
     );
