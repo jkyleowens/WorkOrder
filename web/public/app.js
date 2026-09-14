@@ -50,42 +50,7 @@ function auth(register = location.pathname === "/register", message = "") {
   cleanupTimeGrid?.();
   cleanupTimeGrid = null;
   c.user = null;
-  const steps = [
-    [
-      "Scope the work",
-      "Post a project and break it into scopes. A driveway repour can stay one scope; a full retrofit can split into demolition, rough-in, and finishes — each bid and awarded on its own.",
-    ],
-    [
-      "Bid, or get bid on",
-      "Independent contractors and organizations bid on the scopes that fit their trade. You award each one — the whole project doesn’t have to go to a single winner.",
-    ],
-    [
-      "Work, and log it",
-      "Awarded crews clock time against their scope, in the office or from a jobsite — the same hours feed your timesheets and your organization’s labor costing.",
-    ],
-    [
-      "Fund it, release it",
-      "Clients fund a scope and release payment against approved work. Pay applications, change orders, and lien waivers stay attached to the record.",
-    ],
-  ];
-  const audiences = [
-    [
-      "trust",
-      "For contractors",
-      "Bid on the scope that matches your trade, not the whole project. Credentials, reviews, and your rate travel with your profile.",
-    ],
-    [
-      "people",
-      "For organizations",
-      "Hire, assign a crew, and see labor and material cost roll up automatically as your team logs hours against awarded work.",
-    ],
-    [
-      "billing",
-      "For clients",
-      "Fund work in stages as scopes are awarded, approve pay applications against real hours, and keep a record if something needs to be disputed.",
-    ],
-  ];
-  root.innerHTML = `<main id="main" class="auth-layout" aria-busy="false"><div class="auth-hero"><section class="auth-story">${brand}<div class="story-copy"><p class="eyebrow">BUILT FOR TRADE WORK</p><h1>Every job, broken into work that gets done.</h1><p>Post a project once, and split it into scopes that are bid, staffed, timed, and paid on their own — for the crew doing the work and the client footing the bill.</p></div><div class="auth-diagram" aria-hidden="true"><div class="diagram-user"><span class="avatar">YOU</span><strong>One account. Every possibility.</strong></div><div class="diagram-branches"><span>Independent work</span><span>Your projects</span><span>Your organization</span></div></div><footer>Built around people. Ready for work.</footer></section><section class="auth-form-wrap"><div class="auth-mobile-brand">${brand}</div><div class="auth-form"><p class="eyebrow">${register ? "START YOUR NEXT CHAPTER" : "YOUR WORKSPACE IS WAITING"}</p><h2>${register ? "Create your account" : "Welcome back"}</h2><p>${register ? "A little about you. A world of possibilities." : "Sign in to pick up where you left off."}</p><form id="auth-form">${register ? field("Full name", "full_name", "text", "", 'required maxlength="120" autocomplete="name"') : ""}${field("Email address", "email", "email", "", 'required maxlength="254" autocomplete="email"')}${field("Password", "password", "password", "", `required ${register ? 'minlength="12"' : ""} autocomplete="${register ? "new-password" : "current-password"}"`)}<label class="show-password"><input type="checkbox" id="show-password"> Show password</label>${register ? '<p class="hint">Use at least 12 characters (up to 72 bytes).</p>' : ""}<p class="form-error" role="alert" ${message ? "" : "hidden"}>${esc(message)}</p><button class="btn primary auth-submit" type="submit">${register ? "Create account" : "Sign in"} ${icon("arrow")}</button></form><p class="auth-switch">${register ? 'Already part of WorkOrder? <a href="/login">Sign in</a>' : 'New to WorkOrder? <a href="/register">Create an account</a>'}</p><div class="auth-note">${icon("check")} One account for your work, your clients, and your team.</div></div></section></div><section class="marketing-section"><p class="eyebrow">HOW IT WORKS</p><h2>From posted job to released payment, one scope at a time.</h2><ol class="step-sequence">${steps.map(([title, body], i) => `<li><span class="step-number">${String(i + 1).padStart(2, "0")}</span><h3>${esc(title)}</h3><p>${esc(body)}</p></li>`).join("")}</ol></section><section class="marketing-section audiences-section"><p class="eyebrow">WHO IT’S FOR</p><h2>One account, three ways to work.</h2><div class="audience-grid">${audiences.map(([i, title, body]) => `<article class="audience-card"><span class="square-icon">${icon(i)}</span><h3>${esc(title)}</h3><p>${esc(body)}</p></article>`).join("")}</div></section><footer class="site-footer">${brand}<p>Your work, in order.</p></footer></main>`;
+  root.innerHTML = `<main id="main" class="auth-layout" aria-busy="false"><div class="auth-hero"><section class="auth-story">${brand}<div class="story-copy"><p class="eyebrow">BUILT FOR TRADE WORK</p><h1>Every job, broken into work that gets done.</h1><p>Post a project once, and split it into scopes that are bid, staffed, timed, and paid on their own — for the crew doing the work and the client footing the bill.</p></div><div class="auth-diagram" aria-hidden="true"><div class="diagram-user"><span class="avatar">YOU</span><strong>One account. Every possibility.</strong></div><div class="diagram-branches"><span>Independent work</span><span>Your projects</span><span>Your organization</span></div></div><footer>${'<a href="/">← WorkOrder home</a>'}</footer></section><section class="auth-form-wrap"><div class="auth-mobile-brand">${brand}</div><div class="auth-form"><p class="eyebrow">${register ? "START YOUR NEXT CHAPTER" : "YOUR WORKSPACE IS WAITING"}</p><h2>${register ? "Create your account" : "Welcome back"}</h2><p>${register ? "A little about you. A world of possibilities." : "Sign in to pick up where you left off."}</p><form id="auth-form">${register ? field("Full name", "full_name", "text", "", 'required maxlength="120" autocomplete="name"') : ""}${field("Email address", "email", "email", "", 'required maxlength="254" autocomplete="email"')}${field("Password", "password", "password", "", `required ${register ? 'minlength="12"' : ""} autocomplete="${register ? "new-password" : "current-password"}"`)}<label class="show-password"><input type="checkbox" id="show-password"> Show password</label>${register ? '<p class="hint">Use at least 12 characters (up to 72 bytes).</p>' : ""}<p class="form-error" role="alert" ${message ? "" : "hidden"}>${esc(message)}</p><button class="btn primary auth-submit" type="submit">${register ? "Create account" : "Sign in"} ${icon("arrow")}</button></form><p class="auth-switch">${register ? 'Already part of WorkOrder? <a href="/login">Sign in</a>' : 'New to WorkOrder? <a href="/register">Create an account</a>'}</p><div class="auth-note">${icon("check")} One account for your work, your clients, and your team.</div></div></section></div></main>`;
   document.querySelector("#show-password").onchange = (e) =>
     (document.querySelector("[name=password]").type = e.target.checked
       ? "text"

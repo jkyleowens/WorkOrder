@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#5980a6">
+  <meta name="description" content="WorkOrder splits every project into scopes that are bid, staffed, timed, and paid on their own — for trade organizations, independent contractors, and the clients who hire them.">
+  <title><%= title %></title>
+  <link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="stylesheet" href="/assets/industry.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <nav class="site-nav">
+    <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="30" height="30">WorkOrder<span>®</span></a>
+    <div class="site-nav-links">
+      <a href="#capabilities">Capabilities</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#who-its-for">Who it's for</a>
+      <a href="#pricing">Pricing</a>
+    </div>
+    <div class="site-nav-actions">
+      <a class="btn text" href="/login">Sign in</a>
+      <a class="btn primary" href="/register">Start free</a>
+    </div>
+  </nav>
+
+  <main id="main">
+    <header class="home-hero">
+      <div class="home-hero-copy">
+        <p class="eyebrow">BUILT FOR TRADE WORK</p>
+        <h1>The job ledger for trade work.</h1>
+        <p class="home-hero-sub">Post a project once, and split it into scopes that get bid, staffed, timed, and paid on their own — from the first bid to the last dollar released.</p>
+        <div class="home-hero-actions">
+          <a class="btn primary lg" href="/register">Start free</a>
+          <a class="btn secondary lg" href="#how-it-works">See how it works</a>
+        </div>
+        <p class="hint">Free for independent contractors and clients. No card required.</p>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="hero-visual-head">
+          <div>
+            <span class="eyebrow">Sample project</span>
+            <strong>Warehouse retrofit</strong>
+          </div>
+          <span class="status active">Active</span>
+        </div>
+        <div class="hero-visual-row head">
+          <span>No.</span><span>Scope</span><span>Status</span><span>Funded</span>
+        </div>
+        <div class="hero-visual-row">
+          <span>1</span><span>Demolition</span><span class="status awarded">Awarded</span><span>$18,400</span>
+        </div>
+        <div class="hero-visual-row child">
+          <span>1.1</span><span>Interior strip-out</span><span class="status completed">Completed</span><span>$7,200</span>
+        </div>
+        <div class="hero-visual-row child current">
+          <span>1.2</span><span>Slab saw-cutting</span><span class="status active">Active</span><span>$11,200</span>
+        </div>
+        <div class="hero-visual-row">
+          <span>2</span><span>Electrical rough-in</span><span class="status open">Open · 3 bids</span><span>—</span>
+        </div>
+        <div class="hero-visual-foot">
+          <span>Each scope carries its own bid, crew, hours, and funding.</span>
+          <strong>$18,400 funded</strong>
+        </div>
+      </div>
+    </header>
+
+    <section id="capabilities" class="marketing-section">
+      <p class="eyebrow">WHAT YOU GET</p>
+      <h2>Everything a job needs to get paid for, in one record.</h2>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <span class="square-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18v14H3z"/><path d="M8 7V3h8v4"/></svg>
+          </span>
+          <h3>Nested scope bidding</h3>
+          <p>Split any project into scopes — and those into sub-scopes. Each one is bid, awarded, and billed on its own, so a job isn't all-or-nothing for one contractor.</p>
+        </article>
+        <article class="feature-card">
+          <span class="square-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="10"/></svg>
+          </span>
+          <h3>Field-ready time tracking</h3>
+          <p>Crews clock in from a phone with no signal. Entries queue on the device and sync the moment it reconnects — retries never record the same hours twice.</p>
+        </article>
+        <article class="feature-card">
+          <span class="square-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2z"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>
+          </span>
+          <h3>Funding, pay apps &amp; waivers</h3>
+          <p>Clients fund a scope through Stripe and release payment against approved pay applications. Change orders and lien waivers stay attached to the record.</p>
+        </article>
+        <article class="feature-card">
+          <span class="square-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v11l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v11"/></svg>
+          </span>
+          <h3>Materials &amp; inventory</h3>
+          <p>Track tools and materials by owner, consume them against awarded scopes, and keep an append-only stock ledger — personal or shared across an organization.</p>
+        </article>
+        <article class="feature-card">
+          <span class="square-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 5 6v5.5c0 4 3 6.8 7 8 4-1.2 7-4 7-8V6z"/><path d="M9 12l2 2 4-4.5"/></svg>
+          </span>
+          <h3>Credentials, reviews &amp; disputes</h3>
+          <p>Verified credentials and reviews build trust before the first bid. If something goes wrong on a scope, a mediated dispute process keeps a record.</p>
+        </article>
+        <article class="feature-card">
+          <span class="square-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/><path d="M17 4a4 4 0 0 1 0 8"/><path d="M22 21v-2a4 4 0 0 0-3-4"/></svg>
+          </span>
+          <h3>One account, three roles</h3>
+          <p>Work independently, hire a crew, or post work as a client — all from the same login. No separate accounts to juggle.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="marketing-section">
+      <p class="eyebrow">HOW IT WORKS</p>
+      <h2>From posted job to released payment, one scope at a time.</h2>
+      <ol class="step-sequence">
+        <li>
+          <span class="step-number">01</span>
+          <h3>Scope the work</h3>
+          <p>Post a project and break it into scopes. A driveway repour can stay one scope; a full retrofit can split into demolition, rough-in, and finishes — each bid and awarded on its own.</p>
+        </li>
+        <li>
+          <span class="step-number">02</span>
+          <h3>Bid, or get bid on</h3>
+          <p>Independent contractors and organizations bid on the scopes that fit their trade. You award each one — the whole project doesn't have to go to a single winner.</p>
+        </li>
+        <li>
+          <span class="step-number">03</span>
+          <h3>Work, and log it</h3>
+          <p>Awarded crews clock time against their scope, in the office or from a jobsite — the same hours feed your timesheets and your organization's labor costing.</p>
+        </li>
+        <li>
+          <span class="step-number">04</span>
+          <h3>Fund it, release it</h3>
+          <p>Clients fund a scope and release payment against approved work. Pay applications, change orders, and lien waivers stay attached to the record.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="who-its-for" class="marketing-section">
+      <p class="eyebrow">WHO IT'S FOR</p>
+      <h2>One account, three ways to work.</h2>
+      <div class="audience-grid">
+        <article class="audience-card">
+          <span class="square-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 5 6v5.5c0 4 3 6.8 7 8 4-1.2 7-4 7-8V6z"/><path d="M9 12l2 2 4-4.5"/></svg>
+          </span>
+          <h3>For contractors</h3>
+          <p>Bid on the scope that matches your trade, not the whole project. Credentials, reviews, and your rate travel with your profile.</p>
+        </article>
+        <article class="audience-card">
+          <span class="square-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/><path d="M17 4a4 4 0 0 1 0 8"/><path d="M22 21v-2a4 4 0 0 0-3-4"/></svg>
+          </span>
+          <h3>For organizations</h3>
+          <p>Hire, assign a crew, and see labor and material cost roll up automatically as your team logs hours against awarded work.</p>
+        </article>
+        <article class="audience-card">
+          <span class="square-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2z"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>
+          </span>
+          <h3>For clients</h3>
+          <p>Fund work in stages as scopes are awarded, approve pay applications against real hours, and keep a record if something needs to be disputed.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="pricing" class="marketing-section pricing-section">
+      <p class="eyebrow">PRICING</p>
+      <h2>Free to work. Straightforward when your team grows.</h2>
+      <div class="pricing-grid">
+        <article class="pricing-card">
+          <div class="pricing-card-head">
+            <h3>Individual</h3>
+            <span class="muted">Contractors and clients</span>
+          </div>
+          <div class="pricing-amount">Free</div>
+          <ul class="pricing-features">
+            <li>Profile, credentials &amp; reviews</li>
+            <li>Post projects and bid on scopes</li>
+            <li>Time tracking and the field app</li>
+            <li>Funding, pay applications &amp; waivers</li>
+          </ul>
+          <a class="btn secondary lg" href="/register">Start free</a>
+        </article>
+        <article class="pricing-card featured">
+          <div class="pricing-card-head">
+            <h3>Organization</h3>
+            <span class="muted">Trade companies &amp; crews</span>
+          </div>
+          <div class="pricing-amount">Free <small>during early access</small></div>
+          <ul class="pricing-features">
+            <li>Everything in Individual</li>
+            <li>Hiring, roles &amp; crew timesheets</li>
+            <li>Shared inventory &amp; job costing</li>
+            <li>Organization dashboards &amp; reports</li>
+          </ul>
+          <a class="btn primary lg" href="/register">Create your organization</a>
+          <p class="hint">No card required. Paid organization plans are coming — early organizations keep today's pricing.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-footer-brand">
+      <a class="brand" href="/"><img src="/assets/mark.svg" alt="" width="26" height="26">WorkOrder<span>®</span></a>
+      <p>Your work, in order.</p>
+    </div>
+    <div class="site-footer-links">
+      <a href="#capabilities">Capabilities</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#who-its-for">Who it's for</a>
+      <a href="#pricing">Pricing</a>
+      <a href="/login">Sign in</a>
+    </div>
+  </footer>
+
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>

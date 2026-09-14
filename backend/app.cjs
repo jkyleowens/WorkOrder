@@ -103,7 +103,12 @@ function createApp(
       },
     }),
   );
-  app.get(["/", "/login", "/register", "/console"], (req, res) =>
+  app.get("/", (req, res) =>
+    res
+      .set("Cache-Control", "no-store")
+      .render("home", { title: "WorkOrder — Your work, in order." }),
+  );
+  app.get(["/login", "/register", "/console"], (req, res) =>
     res
       .set("Cache-Control", "no-store")
       .render("index", { title: "WorkOrder — Your work, in order." }),
