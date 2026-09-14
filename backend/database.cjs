@@ -343,6 +343,7 @@ const definitions = {
     "projects",
     {
       client_user_id: D.INTEGER,
+      client_org_id: D.INTEGER,
       title: D.STRING,
       description: D.TEXT,
       status: D.STRING,
@@ -481,6 +482,7 @@ function createDatabase(url, options = {}) {
     ["JobApplication", "JobPosting", "job_posting_id", "posting"],
     ["JobApplication", "User", "applicant_user_id", "applicant"],
     ["Project", "User", "client_user_id", "client"],
+    ["Project", "Organization", "client_org_id", "clientOrganization"],
     ["ProjectSubdivision", "Project", "project_id", "project"],
     ["ProjectSubdivision", "User", "awarded_user_id", "awardedUser"],
     [

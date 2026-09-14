@@ -182,6 +182,7 @@ const schemas = {
       title: text(),
       description: z.string().max(10000).default(""),
       subdivisions: z.array(text(10000)).min(1).max(100).optional(),
+      org_id: id.optional(),
     })
     .strict(),
   subdivision: z

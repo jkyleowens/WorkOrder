@@ -122,12 +122,13 @@ export async function renderPage(c, route, part, page = 0) {
     );
   }
   if (route === "overview") {
+    const overviewOrg = c.org?.id || c.primaryOrg;
     const [projects, assignments, applications, inventory, report] =
       await Promise.all([
         all("/me/projects"),
         all("/me/assignments"),
         all("/applications"),
-        all(c.org ? orgPath(c) + "/inventory" : "/inventory"),
+        overviewOrg ? all(`/organizations/${overviewOrg}/inventory`) : [],
         api(
           c.org
             ? `${orgPath(c)}/dashboard?from=${c.currentWeek.from}&to=${c.currentWeek.to}`
@@ -149,6 +150,11 @@ export async function renderPage(c, route, part, page = 0) {
         );
     const setupSteps = [
       ["Create your account", true, ""],
+      [
+        "Create your organization — even solo work goes through one",
+        c.memberships.length > 0,
+        button("Create organization", "organization", "", "primary"),
+      ],
       [
         "Add your hourly rate and a skill",
         Number(c.user.hourly_rate) > 0 && c.user.skills.length > 0,
@@ -218,7 +224,7 @@ export async function renderPage(c, route, part, page = 0) {
         [
           "Inventory items",
           inventory.length,
-          c.org ? "Shared organization stock" : "Your tools and materials",
+          overviewOrg ? "Your organization’s stock" : "Create an organization to track stock",
         ],
       ]) +
       `<div class="columns">${panel(
@@ -322,28 +328,39 @@ export async function renderPage(c, route, part, page = 0) {
   }
   if (route === "projects") {
     const view = ["mine", "work", "bids"].includes(part) ? part : "market";
+    const workOrgId = c.org?.id || c.primaryOrg;
     const nav = tabs(
       [
         ["market", "Project market", "projects"],
         ["mine", "My client projects", "projects/mine"],
         [
           "work",
-          c.org ? "Organization assignments" : "My assignments",
-          c.org ? `org-projects/${c.org.id}` : "projects/work",
+          "Assignments",
+          workOrgId ? `org-projects/${workOrgId}` : "projects/work",
         ],
-        [
-          "bids",
-          c.org ? "Organization bids" : "My bids",
-          c.org ? `org-bids/${c.org.id}` : "projects/bids",
-        ],
+        ["bids", "Bids", workOrgId ? `org-bids/${workOrgId}` : "projects/bids"],
       ],
       view,
     );
+    if ((view === "work" || view === "bids") && !workOrgId)
+      return (
+        heading(
+          "Projects & collaboration",
+          "Create an organization to see assigned work",
+          "Assignments and bids are tracked per organization — even solo work goes through one.",
+          button("Post a project", "project", "", "primary"),
+        ) +
+        nav +
+        panel(
+          "Get started",
+          `<p class="muted">Create an organization — it can just be you — to bid on scopes and see what you’re assigned.</p>${button("Create organization", "organization", "", "primary")}`,
+        )
+      );
     const path = {
       market: "/projects",
       mine: "/me/projects",
-      work: c.org ? orgPath(c) + "/assignments" : "/me/assignments",
-      bids: c.org ? orgPath(c) + "/bids" : "/bids",
+      work: `/organizations/${workOrgId}/assignments`,
+      bids: `/organizations/${workOrgId}/bids`,
     }[view];
     d.rows = await paged(path, page);
     const rows = d.rows;
@@ -373,7 +390,7 @@ export async function renderPage(c, route, part, page = 0) {
           );
     else
       body = rows.length
-        ? `<div class="cards">${rows.map((p) => `<article class="card"><div class="card-top"><span class="square-icon">${icon("projects")}</span>${status(p.status)}</div><h2><a href="#project/${view === "work" ? p.project_id : p.id}">${esc(view === "work" ? p.project.title : p.title)}</a></h2><p class="clamp">${esc(view === "work" ? p.scope : p.description || "Explore the project scope and available work.")}</p><div class="card-footer"><span class="muted">${esc(view === "work" ? p.awardedOrganization?.name || "Independent work" : p.client?.full_name || "Your project")}</span>${link("View project", `project/${view === "work" ? p.project_id : p.id}`)}</div></article>`).join("")}</div>`
+        ? `<div class="cards">${rows.map((p) => `<article class="card"><div class="card-top"><span class="square-icon">${icon("projects")}</span>${status(p.status)}</div><h2><a href="#project/${view === "work" ? p.project_id : p.id}">${esc(view === "work" ? p.project.title : p.title)}</a></h2><p class="clamp">${esc(view === "work" ? p.scope : p.description || "Explore the project scope and available work.")}</p><div class="card-footer"><span class="muted">${esc(view === "work" ? p.awardedOrganization?.name || "Independent work" : p.clientOrganization?.name || p.client?.full_name || "Your project")}</span>${link("View project", `project/${view === "work" ? p.project_id : p.id}`)}</div></article>`).join("")}</div>`
         : empty(
             view === "mine"
               ? "Bring your project to life"
@@ -392,7 +409,7 @@ export async function renderPage(c, route, part, page = 0) {
           market: "Find your next project",
           mine: "Projects you’re bringing to life",
           work: "Your assigned work",
-          bids: c.org ? "Your organization’s bids" : "Your bids",
+          bids: "Your bids",
         }[view],
         "From the first bid to the final hour, keep every part of the work connected.",
         button("Post a project", "project", "", "primary"),
@@ -400,9 +417,13 @@ export async function renderPage(c, route, part, page = 0) {
       nav +
       body +
       pager(
-        c.org
-          ? `${view === "bids" ? "org-bids" : "org-projects"}/${c.org.id}`
-          : `projects/${view === "market" ? "" : view}`,
+        view === "bids"
+          ? `org-bids/${workOrgId}`
+          : view === "work"
+            ? `org-projects/${workOrgId}`
+            : view === "mine"
+              ? "projects/mine"
+              : "projects",
         page,
         d.rows.length,
       )
@@ -412,6 +433,9 @@ export async function renderPage(c, route, part, page = 0) {
     const p = (d.project = await api(`/projects/${part}`));
     const own = p.client_user_id === c.user.id;
     const me = await api(`/users/${p.client_user_id}`);
+    const clientOrg = p.client_org_id
+      ? await api(`/organizations/${p.client_org_id}/profile`)
+      : null;
     const allAssignments = await all("/me/assignments");
     const ordered = [];
     const visit = (parent = null, depth = 0, prefix = "") => {
@@ -485,7 +509,7 @@ export async function renderPage(c, route, part, page = 0) {
     return (
       `<a class="back" href="#projects">← Projects</a>` +
       heading(
-        `Posted by ${me.full_name}`,
+        `Posted by ${clientOrg ? clientOrg.name : me.full_name}`,
         p.title,
         p.description || "Project scope and execution",
         status(p.status),
@@ -731,6 +755,10 @@ export async function renderPage(c, route, part, page = 0) {
           ? button("Edit organization", "edit-organization", part, "primary")
           : "",
       ) +
+      panel(
+        "Your access",
+        `<div class="actions">${link("Field work", "field")}${link("Shared inventory", `inventory/${part}`)}${link("Billing", "billing")}</div><p class="muted">Log time, use shared materials, and review billing for this organization’s work.</p>`,
+      ) +
       (manage
         ? stats([
             ["Team members", d.members.length, "Your organization"],
@@ -744,7 +772,7 @@ export async function renderPage(c, route, part, page = 0) {
           ]) +
           panel(
             "Organization control panel",
-            `<div class="actions">${button("Post a job", "job", "", "primary")}${link("Manage hiring", `org-jobs/${part}`)}${link("Assigned projects", `org-projects/${part}`)}${link("Organization bids", `org-bids/${part}`)}${link("Team reports", `time/${part}`)}${link("Shared inventory", `inventory/${part}`)}</div><p class="muted">Manage your organization’s profile, hiring, resources and project delivery from one place.</p>`,
+            `<div class="actions">${button("Post a job", "job", "", "primary")}${link("Manage hiring", `org-jobs/${part}`)}${link("Assigned projects", `org-projects/${part}`)}${link("Organization bids", `org-bids/${part}`)}${link("Team reports", `time/${part}`)}</div><p class="muted">Manage your organization’s hiring, resources and project delivery from one place.</p>`,
           )
         : "") +
       (manage
@@ -798,16 +826,25 @@ export async function renderPage(c, route, part, page = 0) {
     );
   }
   if (route === "inventory") {
-    const orgId = Number(part) || c.org?.id;
+    const orgId = Number(part) || c.org?.id || c.primaryOrg;
+    if (!orgId)
+      return (
+        heading(
+          "Inventory",
+          "Create an organization to track inventory",
+          "Tools and materials are tracked per organization — even solo work goes through one, so nothing gets lost between jobs.",
+        ) +
+        panel(
+          "Get started",
+          `<p class="muted">Create an organization — it can just be you — to start tracking tools and materials.</p>${button("Create organization", "organization", "", "primary")}`,
+        )
+      );
     d.inventoryOrg = orgId;
-    const canEdit = !orgId || c.manages(orgId);
-    d.items = await paged(
-      orgId ? `/organizations/${orgId}/inventory` : "/inventory",
-      page,
-    );
+    const canEdit = c.manages(orgId);
+    d.items = await paged(`/organizations/${orgId}/inventory`, page);
     return (
       heading(
-        orgId ? organizationName(c, orgId) : "Personal resources",
+        organizationName(c, orgId),
         "Inventory",
         "Keep track of what you have and where it goes.",
         canEdit ? button("Add inventory", "inventory", "", "primary") : "",
