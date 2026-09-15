@@ -24,6 +24,7 @@
   font-display: swap;
 }
 :root {
+  color-scheme: light;
   --ground: #f2f2f3;
   --surface: #e9e9ea;
   --paper: #fafafb;
