@@ -61,8 +61,38 @@ class PlatformService {
   }
   async profile(user, input) {
     const row = await this.get("User", user);
-    await row.update(schemas.profile.parse(input));
+    const d = schemas.profile.parse(input);
+    if (d.resume_file_id) {
+      const file = await this.m.File.findByPk(d.resume_file_id);
+      check(file && file.uploaded_by_user_id === user, 403, "Attach only a file you uploaded");
+    }
+    await row.update(d);
     return publicUser(row);
+  }
+  // A resume is visible to its owner and to anyone who can review a job
+  // application it was attached to — the poster, or a manager of the
+  // posting organization.
+  async canViewResume(user, fileId) {
+    const owner = await this.m.User.findOne({
+      where: { resume_file_id: fileId },
+      attributes: ["id"],
+    });
+    if (!owner) return false;
+    if (owner.id === user) return true;
+    const applications = await this.m.JobApplication.findAll({
+      where: { applicant_user_id: owner.id },
+      include: [{ model: this.m.JobPosting, as: "posting" }],
+    });
+    for (const a of applications) {
+      if (a.posting.posted_by_user_id === user) return true;
+      if (a.posting.posted_by_org_id) {
+        const membership = await this.m.OrganizationMember.findOne({
+          where: { user_id: user, org_id: a.posting.posted_by_org_id },
+        });
+        if (membership?.canManage()) return true;
+      }
+    }
+    return false;
   }
   async switchContext(user, input) {
     const d = schemas.context.parse(input);

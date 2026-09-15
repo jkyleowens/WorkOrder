@@ -78,6 +78,7 @@ function createApp(
     logger,
   });
   const files = new FileService(service);
+  files.rules.push((user, fileId) => service.canViewResume(user, fileId));
   const trust = new TrustService(service, billing, funding, files);
   const field = new FieldService(service, billing, files, trust);
   // Stripe signs the exact bytes it sends, so this route must read the raw body before JSON parsing.
@@ -275,12 +276,16 @@ function createApp(
   );
   send("get", "/users/:id", async (req) => {
     const u = await service.get("User", param(req));
+    const canSeeResume =
+      u.resume_file_id &&
+      (await service.canViewResume(req.user.id, u.resume_file_id));
     return {
       id: u.id,
       full_name: u.full_name,
       skills: u.skills,
       hourly_rate: u.hourly_rate,
       availability_status: u.availability_status,
+      resume: canSeeResume ? (await files.find([u.resume_file_id]))[0] : null,
       credentials: await trust.publicCredentials(u.id, null),
       reputation: await trust.reputation(u.id, null),
     };

@@ -71,6 +71,7 @@ const profile = {
   skills: z.array(text(80)).max(50),
   hourly_rate: money,
   availability_status: z.enum(["available", "busy", "unavailable"]),
+  resume_file_id: id.nullable(),
 };
 const schemas = {
   register: z

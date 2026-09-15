@@ -111,6 +111,44 @@ export async function action(c, name, id) {
           "Profile updated",
         ),
     );
+  if (name === "resume")
+    return modal(
+      "Add your resume",
+      field(
+        "Resume (PDF, JPEG, PNG or WebP)",
+        "resume",
+        "file",
+        "",
+        'required accept="application/pdf,image/jpeg,image/png,image/webp"',
+      ) +
+        '<p class="hint">Hiring managers can view this when you apply for a role.</p>',
+      (v) =>
+        done(async () => {
+          const file = v.resume;
+          if (!file?.size) throw new Error("Choose a file to upload.");
+          const token = (await api("/auth/csrf")).csrf_token;
+          const response = await fetch("/api/files", {
+            method: "POST",
+            headers: {
+              "X-CSRF-Token": token,
+              "Content-Type": file.type,
+              "X-Filename": encodeURIComponent(file.name),
+            },
+            body: file,
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Upload failed");
+          await write("/me", { resume_file_id: result.id }, "PATCH");
+        }, "Resume added"),
+      "Upload resume",
+    );
+  if (name === "remove-resume")
+    return confirm(
+      "Remove resume",
+      "Hiring managers will no longer be able to view it.",
+      () => done(() => write("/me", { resume_file_id: null }, "PATCH"), "Resume removed"),
+      "Remove resume",
+    );
   if (name === "person") {
     const u = await api(`/users/${id}`);
     return modal(

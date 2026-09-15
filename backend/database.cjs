@@ -282,6 +282,7 @@ const definitions = {
       hourly_rate: D.DECIMAL,
       availability_status: D.STRING,
       platform_role: D.STRING,
+      resume_file_id: D.INTEGER,
     },
   ],
   Organization: [

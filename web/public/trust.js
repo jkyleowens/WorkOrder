@@ -75,7 +75,7 @@ export function reputation(r) {
 function profileSummary(p, isOrg) {
   return isOrg
     ? `<p class="muted">${esc(p.trade_focus || "Organization")}${p.member_count ? ` · ${p.member_count} member${p.member_count === 1 ? "" : "s"}` : ""}</p>${typeBadges(p.organization_types)}`
-    : `<p class="muted">${money(p.hourly_rate)} / hour · ${esc(p.availability_status || "Availability not set")}</p><div class="tags">${p.skills?.length ? p.skills.map((s) => `<span>${esc(s)}</span>`).join("") : "<p>No skills listed.</p>"}</div>`;
+    : `<p class="muted">${money(p.hourly_rate)} / hour · ${esc(p.availability_status || "Availability not set")}</p><div class="tags">${p.skills?.length ? p.skills.map((s) => `<span>${esc(s)}</span>`).join("") : "<p>No skills listed.</p>"}</div>${p.resume ? `<p><a href="/api/files/${p.resume.id}">Download resume · ${esc(p.resume.filename)}</a></p>` : ""}`;
 }
 export async function renderTrust(c, route, part) {
   if (route === "trust-profile" || route === "trust-organization") {
