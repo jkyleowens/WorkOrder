@@ -2,7 +2,7 @@
 // (field-sw.js, registered with scope "/field"); this one is registered with
 // scope "/console" so the two never control the same client and the offline
 // time queue that already works stays untouched.
-const CACHE = "workorder-console-v2";
+const CACHE = "workorder-console-v3";
 // The console's real module graph, plus the stylesheets and the locally hosted
 // fonts industry.css asks for. Paths stay relative to this worker.
 const FILES = [
@@ -13,6 +13,7 @@ const FILES = [
   "api.js",
   "native.js",
   "secure-store.js",
+  "version-gate.js",
   "native-camera.js",
   "billing.js",
   "trust.js",

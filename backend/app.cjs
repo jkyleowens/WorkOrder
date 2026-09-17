@@ -37,6 +37,10 @@ function createApp(
     paymentProvider = null,
     appUrl,
     allowedOrigins = [],
+    // Oldest mobile build this deployment still supports. Defaults to 0.0.0 so
+    // the app boots with no configuration and blocks nobody until someone
+    // deliberately raises it.
+    minClient = process.env.MIN_CLIENT_VERSION || "0.0.0",
   } = {},
 ) {
   if (!sessionSecret || sessionSecret.length < 32)
@@ -168,9 +172,16 @@ function createApp(
   );
   const csrf = (req) =>
     req.session.csrf || (req.session.csrf = randomBytes(32).toString("hex"));
+  // The native apps ship their web assets inside the binary, so an installed
+  // build keeps running its own JavaScript against this API until the user
+  // updates. min_client is how a release that cannot serve an old client says
+  // so; raise it only for a change an old build genuinely cannot survive.
+  // Kept on /api/health because a client has to be able to ask before it holds
+  // any credential — and because the shape of this response is already the
+  // readiness probe, "status" stays exactly where it was.
   app.get("/api/health", async (req, res) => {
     await database.db.authenticate();
-    res.json({ status: "ok" });
+    res.json({ status: "ok", min_client: minClient });
   });
   app.get("/api/auth/csrf", (req, res) =>
     res.set("Cache-Control", "no-store").json({ csrf_token: csrf(req) }),

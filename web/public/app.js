@@ -18,7 +18,9 @@ import {
   onResumeSync,
   assetUrl,
   homeHref,
+  apiBase,
 } from "./native.js";
+import { clientTooOld } from "./version-gate.js";
 import {
   esc,
   initials,
@@ -381,6 +383,9 @@ async function boot() {
     // storage and into the Keychain / Keystore, and loads what is already
     // there so a returning user is not asked to sign in again.
     await installSecureTokens(TOKEN_KEYS);
+    // Stops here only if the server explicitly says this build is too old.
+    // Being unable to ask is not an answer — see version-gate.js.
+    if (await clientTooOld(apiBase())) return;
     // Resuming from the background is the moment a phone most often regains
     // signal, so drain any field time queued while it was offline.
     onResumeSync(() => {
