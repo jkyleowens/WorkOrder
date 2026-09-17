@@ -4,7 +4,18 @@
 // full /field workspace for now; this covers the core ask — clocking in and
 // out, and syncing hours — without a page navigation.
 import { api, write } from "./api.js";
-import { esc, field, textarea, heading, panel, button, select, modal, toast } from "./ui.js";
+import { clockLocation } from "./native.js";
+import {
+  esc,
+  field,
+  textarea,
+  heading,
+  panel,
+  button,
+  select,
+  modal,
+  toast,
+} from "./ui.js";
 import {
   queue,
   saveQueued,
@@ -120,18 +131,21 @@ export function mountField(root, c) {
       e.preventDefault();
       try {
         const v = Object.fromEntries(new FormData(form));
-        const ids = [
-          ...form.querySelectorAll("[name=worker]:checked"),
-        ].map((i) => Number(i.value));
-        if (!ids.length) throw new Error("Choose at least one worker.");
-        const s = c.data.field.scopes.find(
-          (x) => x.id === c.data.fieldScope,
+        const ids = [...form.querySelectorAll("[name=worker]:checked")].map(
+          (i) => Number(i.value),
         );
+        if (!ids.length) throw new Error("Choose at least one worker.");
+        const s = c.data.field.scopes.find((x) => x.id === c.data.fieldScope);
         enqueue(c.user.id, {
           subdivision_id: s.id,
           user_ids: ids,
           entries: [
-            { date: v.date, start_time: v.start_time, end_time: v.end_time, note: v.note },
+            {
+              date: v.date,
+              start_time: v.start_time,
+              end_time: v.end_time,
+              note: v.note,
+            },
           ],
         });
         if (navigator.onLine) await syncField(c.user.id);
@@ -157,11 +171,17 @@ export async function fieldAction(c, name, id) {
     if (!ids.length) throw new Error("Choose at least one worker.");
     if (activeClock(c.user.id)) throw new Error("A clock is already running.");
     const s = c.data.field.scopes.find((x) => x.id === c.data.fieldScope);
+    // Taken now and carried on the running clock, because this is where the
+    // shift actually started — by the time the queue syncs, which may be hours
+    // later and miles away, the device's position means nothing. Returns null
+    // if location is refused or slow; that is a valid entry, not a failure.
+    const location = await clockLocation();
     activeClock(c.user.id, {
       started: new Date().toISOString(),
       user_ids: ids,
       subdivision_id: s.id,
       scope_name: s.scope,
+      location,
     });
     return c.reload();
   }
@@ -172,7 +192,11 @@ export async function fieldAction(c, name, id) {
     enqueue(c.user.id, {
       subdivision_id: clock.subdivision_id,
       user_ids: clock.user_ids,
-      entries,
+      // A shift that runs past midnight becomes several entries; they all
+      // belong to the one place the clock was started.
+      entries: clock.location
+        ? entries.map((e) => ({ ...e, ...clock.location }))
+        : entries,
     });
     activeClock(c.user.id, null);
     if (navigator.onLine) await syncField(c.user.id);

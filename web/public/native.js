@@ -37,6 +37,45 @@ async function callPlugin(name, method, options) {
     return null;
   }
 }
+// A clock event's coordinates, or null. Never throws and never blocks for
+// long: a crew member clocking in must not wait on a GPS lock, and refusing
+// location must not stop them recording their hours. Callers treat null as
+// "no location", which is a perfectly valid entry.
+//
+// Native permission strings: NSLocationWhenInUseUsageDescription on iOS,
+// ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION on Android.
+export async function clockLocation({ timeoutMs = 5000 } = {}) {
+  const fix = await Promise.race([
+    currentPosition(timeoutMs),
+    new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+  ]).catch(() => null);
+  const c = fix?.coords;
+  if (!c || !Number.isFinite(c.latitude) || !Number.isFinite(c.longitude))
+    return null;
+  return {
+    clock_latitude: Number(c.latitude.toFixed(6)),
+    clock_longitude: Number(c.longitude.toFixed(6)),
+    clock_accuracy_m: Number.isFinite(c.accuracy)
+      ? Number(c.accuracy.toFixed(1))
+      : null,
+  };
+}
+function currentPosition(timeoutMs) {
+  const native = plugin("Geolocation");
+  if (native?.getCurrentPosition)
+    return native.getCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: timeoutMs,
+    });
+  if (!globalThis.navigator?.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) =>
+    navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), {
+      enableHighAccuracy: true,
+      timeout: timeoutMs,
+      maximumAge: 60000,
+    }),
+  );
+}
 const listeners = [];
 function listen(name, event, handler) {
   const target = plugin(name);

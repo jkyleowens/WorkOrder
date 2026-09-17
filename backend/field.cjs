@@ -22,12 +22,30 @@ const schemas = {
         .refine((v) => new Set(v).size === v.length),
       entries: z
         .array(
-          z.object({
-            date,
-            start_time: z.string(),
-            end_time: z.string(),
-            note: text.default(""),
-          }),
+          z
+            .object({
+              date,
+              start_time: z.string(),
+              end_time: z.string(),
+              note: text.default(""),
+              // Captured on the device at the moment of the clock event, not at
+              // sync time — a queued entry may not reach the server for hours,
+              // by which point the crew is somewhere else entirely. Optional
+              // throughout: a refused permission must never block recording time.
+              clock_latitude: z.number().min(-90).max(90).nullish(),
+              clock_longitude: z.number().min(-180).max(180).nullish(),
+              clock_accuracy_m: z.number().min(0).max(100000).nullish(),
+            })
+            // A lone coordinate is not a location, and the table refuses it
+            // anyway; rejecting it here says so in words instead of as a
+            // constraint violation.
+            .refine(
+              (e) => (e.clock_latitude == null) === (e.clock_longitude == null),
+              {
+                message:
+                  "A clock location needs both latitude and longitude, or neither",
+              },
+            ),
         )
         .min(1)
         .max(31),
@@ -194,8 +212,19 @@ class FieldService {
   async syncTime(user, input) {
     const d = schemas.time.parse(input),
       fingerprint = hash(d);
-    const entries = d.entries.map((e) =>
-      platformSchemas.time.parse({ ...e, subdivision_id: d.subdivision_id }),
+    // platformSchemas.time is strict and shared with the console's own time
+    // entry, which has no location. Keep the coordinates out of that parse and
+    // reattach them after, rather than widening a schema other callers use.
+    const entries = d.entries.map(
+      ({ clock_latitude, clock_longitude, clock_accuracy_m, ...e }) => ({
+        ...platformSchemas.time.parse({
+          ...e,
+          subdivision_id: d.subdivision_id,
+        }),
+        clock_latitude: clock_latitude ?? null,
+        clock_longitude: clock_longitude ?? null,
+        clock_accuracy_m: clock_accuracy_m ?? null,
+      }),
     );
     return this.db.transaction(async (t) => {
       const { s } = await this.p.work(d.subdivision_id, t);
