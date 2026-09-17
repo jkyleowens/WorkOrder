@@ -27,6 +27,7 @@ import {
   heading,
   button,
 } from "./ui.js";
+import { installConsoleOffline } from "./console-store.js";
 import { renderPage } from "./pages.js";
 import { action } from "./actions.js";
 const root = document.querySelector("#app");
@@ -368,6 +369,9 @@ window.addEventListener("session-expired", () => {
 window.addEventListener("pageshow", (e) => {
   if (e.persisted) boot();
 });
+// Installed before boot so the very first reads of a cold offline launch can
+// still be served from the last snapshot.
+installConsoleOffline();
 async function boot() {
   try {
     await setupNative();

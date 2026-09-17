@@ -80,6 +80,13 @@ function createApp(
       .set("Cache-Control", "no-cache")
       .sendFile(path.join(__dirname, "../web/public/field-sw.js")),
   );
+  // Served from the root, not /assets: a worker can only claim a scope at or
+  // below its own path, and this one registers for /console.
+  app.get("/sw.js", (req, res) =>
+    res
+      .set("Cache-Control", "no-cache")
+      .sendFile(path.join(__dirname, "../web/public/sw.js")),
+  );
   app.use("/assets", express.static(path.join(__dirname, "../web/public")));
   const billing = new BillingService(service);
   const funding = new FundingService(service, billing, paymentProvider, {
