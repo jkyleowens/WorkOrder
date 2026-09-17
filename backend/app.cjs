@@ -16,6 +16,14 @@ const { Op } = require("sequelize");
 const { PlatformService, publicUser } = require("./services.cjs");
 const { schemas, id, date, check } = require("./validation.cjs");
 const { withNoVerifySsl } = require("./database.cjs");
+const { createTokenStore } = require("./auth-tokens.cjs");
+// Native shells load the bundled web assets from these origins; everything else
+// is same-origin and never sends an Origin the browser will check.
+const NATIVE_ORIGINS = [
+  "capacitor://localhost",
+  "http://localhost",
+  "https://localhost",
+];
 function createApp(
   database,
   {
@@ -28,6 +36,7 @@ function createApp(
     pool: sharedPool,
     paymentProvider = null,
     appUrl,
+    allowedOrigins = [],
   } = {},
 ) {
   if (!sessionSecret || sessionSecret.length < 32)
@@ -88,6 +97,26 @@ function createApp(
     async (req, res) =>
       res.json(await funding.webhook(req.body, req.get("stripe-signature"))),
   );
+  // CORS for the native shells. Mounted ahead of every /api route because
+  // Express 5 answers unmatched OPTIONS preflights with 404 before any handler
+  // further down could reply. Hand-rolled: `cors` is not a dependency here.
+  const origins = new Set([...NATIVE_ORIGINS, ...allowedOrigins]);
+  app.use("/api", (req, res, next) => {
+    const origin = req.get("origin");
+    res.vary("Origin");
+    if (origin && origins.has(origin))
+      res.set({
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Authorization, X-CSRF-Token, X-Filename",
+        "Access-Control-Allow-Methods":
+          "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Max-Age": "600",
+      });
+    if (req.method === "OPTIONS") return res.status(204).end();
+    next();
+  });
   app.use(express.json({ limit: "64kb" }));
   app.use(
     session({
@@ -104,6 +133,22 @@ function createApp(
       },
     }),
   );
+  const tokens = createTokenStore(database.db);
+  // Native clients authenticate with `Authorization: Bearer <token>` because
+  // WKWebView will not keep a cross-site cookie. This deliberately leaves
+  // req.session untouched — establish() regenerates and saves the session, and
+  // a faked session object would fight it.
+  const TOKEN_ROUTES = new Set(["/auth/token", "/auth/token/refresh"]);
+  app.use("/api", async (req, res, next) => {
+    const header = req.get("authorization") || "";
+    const raw = /^Bearer[ ]+(\S+)$/i.exec(header.trim())?.[1];
+    // A stale access token must not block the endpoints used to replace it.
+    if (!raw || TOKEN_ROUTES.has(req.path)) return next();
+    const row = await tokens.resolveAccess(raw);
+    check(row, 401, "Invalid or expired access token");
+    req.auth = { userId: row.user_id, tokenId: row.id, context: row.context };
+    next();
+  });
   app.get("/", (req, res) =>
     res
       .set("Cache-Control", "no-store")
@@ -123,9 +168,24 @@ function createApp(
   app.get("/api/auth/csrf", (req, res) =>
     res.set("Cache-Control", "no-store").json({ csrf_token: csrf(req) }),
   );
+  // Entry points a cookieless client must reach before it holds any token.
+  const ENTRY_ROUTES = new Set([
+    "/auth/login",
+    "/auth/register",
+    "/auth/token",
+    "/auth/token/refresh",
+  ]);
+  const hasSessionCookie = (req) =>
+    /(?:^|;\s*)workorder\.sid=/.test(req.get("cookie") || "");
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
-    if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    // CSRF defends the ambient cookie session. A request that carries no
+    // session cookie has no ambient authority to abuse: a cross-site form can
+    // be forced, but an attacker cannot set an Authorization header — it is not
+    // CORS-safelisted, so it forces a preflight this server answers.
+    const exempt =
+      !hasSessionCookie(req) && (req.auth || ENTRY_ROUTES.has(req.path));
+    if (!exempt && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
       const token = Buffer.from(req.get("X-CSRF-Token") || "");
       const expected = Buffer.from(req.session.csrf || "");
       check(
@@ -145,17 +205,31 @@ function createApp(
     legacyHeaders: false,
     message: { error: "Too many authentication attempts; try again later" },
   });
+  // Personal/organization mode lives on whichever credential made the request:
+  // the cookie session for the web console, the token row for a native client.
+  // Consequence, and it is the intended one: switching to organization mode on
+  // the phone does NOT switch the same user's desktop session, and vice versa.
+  // Each credential carries its own context.
+  const getContext = (req) => req.session.context ?? req.auth?.context;
+  const setContext = async (req, context) => {
+    if (req.session.userId) req.session.context = context;
+    else {
+      await tokens.setContext(req.auth.tokenId, context);
+      req.auth.context = context;
+    }
+    return context;
+  };
   const establish = async (req, user) => {
     await new Promise((resolve, reject) =>
       req.session.regenerate((e) => (e ? reject(e) : resolve())),
     );
     req.session.userId = user.id;
-    req.session.context = { mode: "personal" };
+    await setContext(req, { mode: "personal" });
     const token = csrf(req);
     await new Promise((resolve, reject) =>
       req.session.save((e) => (e ? reject(e) : resolve())),
     );
-    return { user, context: req.session.context, csrf_token: token };
+    return { user, context: getContext(req), csrf_token: token };
   };
   app.post("/api/auth/register", authLimiter, async (req, res) =>
     res
@@ -165,18 +239,38 @@ function createApp(
   app.post("/api/auth/login", authLimiter, async (req, res) =>
     res.json(await establish(req, await service.login(req.body))),
   );
+  // Native sign-in: same credentials, a token pair instead of a cookie.
+  app.post("/api/auth/token", authLimiter, async (req, res) => {
+    const { device_label, ...credentials } = req.body || {};
+    const user = await service.login(credentials);
+    res.json({
+      user,
+      ...(await tokens.issue(user.id, { deviceLabel: device_label })),
+    });
+  });
+  app.post("/api/auth/token/refresh", authLimiter, async (req, res) => {
+    const { refresh_token, device_label } = req.body || {};
+    res.json(
+      await tokens.refresh(refresh_token, { deviceLabel: device_label }),
+    );
+  });
   app.use("/api", async (req, res, next) => {
-    check(req.session.userId, 401, "Authentication required");
-    req.user = await service.get("User", req.session.userId);
-    if (req.session.context?.mode === "organization") {
+    const userId = req.session.userId ?? req.auth?.userId;
+    check(userId, 401, "Authentication required");
+    req.user = await service.get("User", userId);
+    const context = getContext(req);
+    if (context?.mode === "organization") {
       const member = await m.OrganizationMember.findOne({
-        where: { user_id: req.user.id, org_id: req.session.context.org_id },
+        where: { user_id: req.user.id, org_id: context.org_id },
       });
-      if (!member?.canManage()) req.session.context = { mode: "personal" };
+      // The downgrade has to persist on the token too, or a demoted manager
+      // comes back in organization mode after the app restarts.
+      if (!member?.canManage()) await setContext(req, { mode: "personal" });
     }
     next();
   });
   app.post("/api/auth/logout", async (req, res) => {
+    if (req.auth) await tokens.revoke(req.auth.tokenId);
     await new Promise((resolve, reject) =>
       req.session.destroy((e) => (e ? reject(e) : resolve())),
     );
@@ -188,14 +282,15 @@ function createApp(
     res.status(204).end();
   });
   app.get("/api/me", (req, res) =>
-    res.json({ user: publicUser(req.user), context: req.session.context }),
+    res.json({ user: publicUser(req.user), context: getContext(req) }),
   );
   app.patch("/api/me", async (req, res) =>
     res.json(await service.profile(req.user.id, req.body)),
   );
   app.put("/api/context", async (req, res) => {
-    req.session.context = await service.switchContext(req.user.id, req.body);
-    res.json(req.session.context);
+    res.json(
+      await setContext(req, await service.switchContext(req.user.id, req.body)),
+    );
   });
   const param = (req, name = "id") => id.parse(Number(req.params[name]));
   const page = (req) => schemas.page.parse(req.query);
