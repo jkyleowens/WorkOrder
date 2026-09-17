@@ -287,6 +287,22 @@ function createApp(
   app.patch("/api/me", async (req, res) =>
     res.json(await service.profile(req.user.id, req.body)),
   );
+  // Apple requires an in-app way to delete an account (App Store 5.1.1(v)).
+  // deleteAccount clears this user's sessions and tokens itself; the cookie and
+  // the bearer row this request arrived on are dropped here, where HTTP lives.
+  app.delete("/api/me", async (req, res) => {
+    const result = await service.deleteAccount(req.user.id, req.body ?? {});
+    if (req.auth) await tokens.revoke(req.auth.tokenId);
+    await new Promise((resolve, reject) =>
+      req.session.destroy((e) => (e ? reject(e) : resolve())),
+    );
+    res.clearCookie("workorder.sid", {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: production,
+    });
+    res.json(result);
+  });
   app.put("/api/context", async (req, res) => {
     res.json(
       await setContext(req, await service.switchContext(req.user.id, req.body)),

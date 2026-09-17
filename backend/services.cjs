@@ -1,5 +1,6 @@
 const { Op } = require("sequelize");
 const bcrypt = require("bcryptjs");
+const { randomBytes } = require("node:crypto");
 const { schemas, check } = require("./validation.cjs");
 const publicUser = (user) => {
   const { password_hash, ...value } = user.get({ plain: true });
@@ -64,7 +65,11 @@ class PlatformService {
     const d = schemas.profile.parse(input);
     if (d.resume_file_id) {
       const file = await this.m.File.findByPk(d.resume_file_id);
-      check(file && file.uploaded_by_user_id === user, 403, "Attach only a file you uploaded");
+      check(
+        file && file.uploaded_by_user_id === user,
+        403,
+        "Attach only a file you uploaded",
+      );
     }
     await row.update(d);
     return publicUser(row);
@@ -1082,5 +1087,242 @@ class PlatformService {
     );
     return { ...time, ...materials[0] };
   }
+  // --- Account deletion -----------------------------------------------------
+  // WorkOrder cannot cascade a user away: awarded work, recorded hours, funded
+  // scopes, payouts, lien waivers, signed field documents, disputes and reviews
+  // are other people's financial and legal records, and several of those tables
+  // are append-only by trigger. Deletion therefore hard-deletes what is purely
+  // personal and anonymises the account row that the retained records point at,
+  // so their integrity — and every other party's view of them — survives.
+  //
+  // Organizations the user is the only member of are treated as extensions of
+  // that user: their in-flight work and money block deletion too.
+  async soloOrgs(actor, t) {
+    const memberships = await this.m.OrganizationMember.findAll({
+      where: { user_id: actor },
+      transaction: t,
+    });
+    const solo = [];
+    for (const m of memberships)
+      if (
+        !(await this.m.OrganizationMember.count({
+          where: { org_id: m.org_id, user_id: { [Op.ne]: actor } },
+          transaction: t,
+        }))
+      )
+        solo.push(m.org_id);
+    return { memberships, solo };
+  }
+  // Every reason the account cannot leave yet, each phrased as the next step.
+  async deletionBlockers(actor, memberships, solo, t) {
+    const blockers = [];
+    const plural = (n, one, many) => (n === 1 ? one : many);
+    const count = (model, where) =>
+      this.m[model].count({ where, transaction: t });
+    // Postgres rejects a bind list longer than the statement's placeholders, so
+    // only pass the solo-organization array to the queries that reference it.
+    const scalar = async (text) => {
+      const bind = [actor];
+      if (text.includes("$2")) bind.push(solo.length ? solo : [0]);
+      const [rows] = await this.db.query(text, { bind, transaction: t });
+      return Number(rows[0].total);
+    };
+    for (const m of memberships) {
+      if (m.internal_role !== "owner") continue;
+      const others = await count("OrganizationMember", {
+        org_id: m.org_id,
+        user_id: { [Op.ne]: actor },
+      });
+      const owners = await count("OrganizationMember", {
+        org_id: m.org_id,
+        user_id: { [Op.ne]: actor },
+        internal_role: "owner",
+      });
+      if (others && !owners) {
+        const org = await this.get("Organization", m.org_id, t);
+        blockers.push(
+          `You are the only owner of ${org.name}. Make another member an owner, or remove its ${others} other ${plural(others, "member", "members")}, before deleting your account.`,
+        );
+      }
+    }
+    const awarded = await count("ProjectSubdivision", {
+      status: { [Op.in]: ["awarded", "active"] },
+      [Op.or]: [
+        { awarded_user_id: actor },
+        ...(solo.length ? [{ awarded_org_id: { [Op.in]: solo } }] : []),
+      ],
+    });
+    if (awarded)
+      blockers.push(
+        `${awarded} awarded ${plural(awarded, "scope is", "scopes are")} still in flight. Awarded work cannot be reassigned, so mark it complete — or ask the client to close it out — before deleting your account.`,
+      );
+    const active = await scalar(
+      "SELECT count(*)::text AS total FROM projects WHERE client_user_id=$1 AND status='active' AND (client_org_id IS NULL OR client_org_id = ANY($2))",
+    );
+    if (active)
+      blockers.push(
+        `${active} of your ${plural(active, "projects still has", "projects still have")} work underway. Close out every awarded scope on ${plural(active, "it", "them")} first.`,
+      );
+    const unreleased = await scalar(
+      `SELECT count(*)::text AS total FROM scope_fundings f WHERE f.funded_by_user_id=$1 AND (f.status IN ('pending','processing') OR f.amount_received
+         - COALESCE((SELECT sum(r.amount) FROM scope_refunds r WHERE r.funding_id=f.id AND r.status IN ('processing','succeeded')),0)
+         - COALESCE((SELECT sum(l.amount - l.amount_reversed) FROM scope_releases l WHERE l.funding_id=f.id AND l.status IN ('processing','paid')),0) > 0)`,
+    );
+    if (unreleased)
+      blockers.push(
+        `You still have funded money on ${unreleased} ${plural(unreleased, "scope", "scopes")} that has not been released or refunded. Release or refund it first.`,
+      );
+    const owed = await scalar(
+      `SELECT (SELECT count(*) FROM scope_releases l JOIN payment_accounts a ON a.id=l.payment_account_id WHERE l.status='processing' AND (a.owner_user_id=$1 OR a.owner_org_id = ANY($2)))
+            + (SELECT count(*) FROM provider_payouts p JOIN payment_accounts a ON a.id=p.payment_account_id WHERE p.status IN ('requested','pending','in_transit') AND (a.owner_user_id=$1 OR a.owner_org_id = ANY($2))) AS total`,
+    );
+    if (owed)
+      blockers.push(
+        `${owed} ${plural(owed, "payment is", "payments are")} still on the way to your payment account. Wait for ${plural(owed, "it", "them")} to settle, and withdraw your remaining balance, before deleting your account.`,
+      );
+    const disputes = await scalar(
+      `SELECT count(*)::text AS total FROM disputes d JOIN project_subdivisions s ON s.id=d.subdivision_id JOIN projects p ON p.id=s.project_id
+        WHERE d.status='open' AND (d.opened_by_user_id=$1 OR p.client_user_id=$1 OR s.awarded_user_id=$1 OR s.awarded_org_id = ANY($2))`,
+    );
+    if (disputes)
+      blockers.push(
+        `${disputes} ${plural(disputes, "dispute is", "disputes are")} still open on work you are party to. Resolve or withdraw ${plural(disputes, "it", "them")} first.`,
+      );
+    const waivers = await scalar(
+      "SELECT count(*)::text AS total FROM lien_waivers WHERE status='requested' AND (claimant_user_id=$1 OR claimant_org_id = ANY($2))",
+    );
+    if (waivers)
+      blockers.push(
+        `${waivers} lien ${plural(waivers, "waiver is", "waivers are")} waiting for your signature. Sign or void ${plural(waivers, "it", "them")} first.`,
+      );
+    return blockers;
+  }
+  async deleteAccount(actor, input) {
+    const confirmation =
+      typeof input?.confirm_email === "string"
+        ? input.confirm_email.trim().toLowerCase()
+        : "";
+    // Hashing is slow; do it before the transaction so no row lock waits on it.
+    const tombstone = await bcrypt.hash(randomBytes(32).toString("hex"), 12);
+    return this.db.transaction(async (t) => {
+      const user = await this.get("User", actor, t, true);
+      check(
+        confirmation === user.email,
+        422,
+        "Type the email address on this account to confirm deletion",
+      );
+      const { memberships, solo } = await this.soloOrgs(actor, t);
+      const blockers = await this.deletionBlockers(actor, memberships, solo, t);
+      check(!blockers.length, 409, blockers.join(" "));
+      const orgList = solo.length ? solo : [0];
+      const sql = (text) =>
+        this.db.query(text, {
+          bind: text.includes("$2") ? [actor, orgList] : [actor],
+          transaction: t,
+        });
+      // Wind down open offers so nobody is left waiting on an absent account.
+      await this.m.Bid.update(
+        { status: "withdrawn" },
+        {
+          where: {
+            status: "pending",
+            [Op.or]: [
+              { bidding_user_id: actor },
+              ...(solo.length ? [{ bidding_org_id: { [Op.in]: solo } }] : []),
+            ],
+          },
+          transaction: t,
+        },
+      );
+      // A project only stays "open" while nothing on it is awarded, so
+      // cancelling one here can never strand work someone is performing.
+      await sql(
+        `UPDATE bids SET status='rejected' WHERE status='pending' AND subdivision_id IN (
+           SELECT s.id FROM project_subdivisions s JOIN projects p ON p.id=s.project_id
+            WHERE p.client_user_id=$1 AND p.status='open' AND (p.client_org_id IS NULL OR p.client_org_id = ANY($2)))`,
+      );
+      await sql(
+        `UPDATE project_subdivisions SET status='cancelled' WHERE project_id IN (
+           SELECT id FROM projects WHERE client_user_id=$1 AND status='open' AND (client_org_id IS NULL OR client_org_id = ANY($2)))`,
+      );
+      await sql(
+        "UPDATE projects SET status='cancelled' WHERE client_user_id=$1 AND status='open' AND (client_org_id IS NULL OR client_org_id = ANY($2))",
+      );
+      await sql(
+        `UPDATE job_applications SET status='rejected' WHERE status IN ('pending','offered') AND job_posting_id IN (
+           SELECT id FROM job_postings WHERE posted_by_user_id=$1 AND status='open' AND (posted_by_org_id IS NULL OR posted_by_org_id = ANY($2)))`,
+      );
+      await sql(
+        "UPDATE job_postings SET status='closed' WHERE posted_by_user_id=$1 AND status='open' AND (posted_by_org_id IS NULL OR posted_by_org_id = ANY($2))",
+      );
+      // Hard-delete what is only ever this person's.
+      await this.m.JobApplication.destroy({
+        where: { applicant_user_id: actor, status: { [Op.ne]: "accepted" } },
+        transaction: t,
+      });
+      // An accepted application is the other party's hiring record; only the
+      // free-text negotiation carried on it is personal.
+      await this.m.JobApplication.update(
+        { negotiation: [] },
+        { where: { applicant_user_id: actor }, transaction: t },
+      );
+      await this.m.Notification.destroy({
+        where: { user_id: actor },
+        transaction: t,
+      });
+      await this.m.Credential.destroy({
+        where: { owner_user_id: actor },
+        transaction: t,
+      });
+      await this.m.OrganizationMember.destroy({
+        where: { user_id: actor },
+        transaction: t,
+      });
+      await sql("DELETE FROM field_time_batches WHERE user_id=$1");
+      await sql("DELETE FROM sessions WHERE sess->>'userId' = $1::text");
+      // auth_tokens and device_tokens arrive in separate migrations; clear them
+      // only once they exist so this works before and after those land.
+      for (const table of ["auth_tokens", "device_tokens"]) {
+        const [present] = await this.db.query(
+          "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND column_name='user_id'",
+          { bind: [table], transaction: t },
+        );
+        if (present.length)
+          await this.db.query(`DELETE FROM ${table} WHERE user_id=$1`, {
+            bind: [actor],
+            transaction: t,
+          });
+      }
+      // Anonymize the row every retained record still points at. The address is
+      // unique, unroutable and not the one the person signed up with, so the
+      // account cannot be signed into and the old address is free to reuse.
+      await user.update(
+        {
+          full_name: "Deleted user",
+          email: `deleted-user-${user.id}@deleted.invalid`,
+          password_hash: tombstone,
+          skills: [],
+          hourly_rate: 0,
+          availability_status: "unavailable",
+          platform_role: "user",
+          resume_file_id: null,
+        },
+        { transaction: t },
+      );
+      // Uploaded files last: by now the resume and credentials that referenced
+      // them are gone, and anything still cited by a retained record stays.
+      await sql(
+        `DELETE FROM files f WHERE f.uploaded_by_user_id=$1
+           AND NOT EXISTS (SELECT 1 FROM credentials c WHERE c.file_id=f.id)
+           AND NOT EXISTS (SELECT 1 FROM dispute_events e WHERE e.file_id=f.id)
+           AND NOT EXISTS (SELECT 1 FROM field_documents d WHERE d.file_id=f.id)
+           AND NOT EXISTS (SELECT 1 FROM users u WHERE u.resume_file_id=f.id)
+           AND NOT EXISTS (SELECT 1 FROM daily_reports r WHERE r.file_ids @> to_jsonb(f.id))`,
+      );
+      return { deleted: true };
+    });
+  }
+  // HTTP adapter for the route above: the domain work stays in deleteAccount,
+  // and the session teardown mirrors POST /api/auth/logout.
 }
 module.exports = { PlatformService, publicUser };

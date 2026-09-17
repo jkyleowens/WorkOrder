@@ -146,8 +146,37 @@ export async function action(c, name, id) {
     return confirm(
       "Remove resume",
       "Hiring managers will no longer be able to view it.",
-      () => done(() => write("/me", { resume_file_id: null }, "PATCH"), "Resume removed"),
+      () =>
+        done(
+          () => write("/me", { resume_file_id: null }, "PATCH"),
+          "Resume removed",
+        ),
       "Remove resume",
+    );
+  if (name === "delete-account")
+    return modal(
+      "Delete your account",
+      `<p>This cannot be undone. Your profile, skills, resume, credentials, notifications and sign-in are removed for good.</p><p>Awarded work, recorded hours, payments, lien waivers, signed documents, disputes and reviews stay on WorkOrder for the people who depend on them, with your personal details taken off them.</p>` +
+        field(
+          `Type ${c.user.email} to confirm`,
+          "confirm_email",
+          "email",
+          "",
+          'required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"',
+        ),
+      async (v) => {
+        if (
+          (v.confirm_email || "").trim().toLowerCase() !==
+          c.user.email.toLowerCase()
+        )
+          throw new Error(
+            "That is not the email address on this account. Type it exactly to confirm.",
+          );
+        await write("/me", { confirm_email: v.confirm_email }, "DELETE");
+        localStorage.removeItem("workorder:field:identity");
+        location.assign("/login");
+      },
+      "Delete my account",
     );
   if (name === "person") {
     const u = await api(`/users/${id}`);
@@ -268,7 +297,13 @@ export async function action(c, name, id) {
     return modal(
       "Post a project",
       actor() +
-        field("Project title", "title", "text", "", 'required maxlength="200"') +
+        field(
+          "Project title",
+          "title",
+          "text",
+          "",
+          'required maxlength="200"',
+        ) +
         textarea("Description", "description", "", 'maxlength="10000"') +
         textarea(
           "Subdivisions (one scope per line, optional)",
