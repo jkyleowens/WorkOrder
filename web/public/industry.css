@@ -1687,3 +1687,84 @@ dialog form {
     padding: 15px;
   }
 }
+
+/* ---------- Touch and native-shell ergonomics ----------
+   Appended last on purpose: these rules refine what the blocks above lay out,
+   and keeping them here means they win without raising anyone's specificity.
+   Scoped to touch input and to the native shell, so the desktop console is
+   untouched. */
+
+/* Inside a native WebView the page runs edge to edge: the top bar would sit
+   under the notch or Dynamic Island, and the tab bar under the home indicator.
+   The tab bar already pads for its inset; this covers the rest. */
+.native-shell .topbar {
+  padding-top: env(safe-area-inset-top, 0);
+  height: auto;
+  min-height: 65px;
+}
+.native-shell #main:not(.auth-layout),
+.native-shell .field-shell-inner {
+  padding-left: max(env(safe-area-inset-left, 0), 20px);
+  padding-right: max(env(safe-area-inset-right, 0), 20px);
+}
+.native-shell .field-topbar {
+  padding-top: max(env(safe-area-inset-top, 0), 12px);
+}
+/* A native shell has no browser chrome to pull down, and rubber-banding the
+   whole document under a fixed tab bar reads as a glitch. */
+.native-shell body {
+  overscroll-behavior-y: none;
+}
+
+@media (pointer: coarse) {
+  /* Comfortable targets for someone working in gloves. The tab bar already
+     stands at 60px; this brings the rest of the app up to the same standard. */
+  .btn,
+  .mobile-tab,
+  .field-tab,
+  .tabs a,
+  .list-row,
+  .close,
+  .inbox-shortcut,
+  .account button,
+  .more-signout {
+    min-height: 44px;
+  }
+  .btn,
+  .field-tab {
+    padding-block: 11px;
+  }
+  /* Icon-only controls are the easiest to miss and the smallest by default. */
+  .close,
+  .inbox-shortcut,
+  .account button {
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* iOS zooms the viewport when a focused input is under 16px, and it does not
+     zoom back out. field.css already does this for /field; the console needs it
+     just as much. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  /* A long press on a button should act, not select the label or offer a
+     callout. Links and text stay selectable. */
+  .btn,
+  .mobile-tab,
+  .field-tab,
+  .nav-dot,
+  .close {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Wide data keeps its own scroller so the page itself never slides sideways. */
+  .table-scroll,
+  .time-grid-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+}
