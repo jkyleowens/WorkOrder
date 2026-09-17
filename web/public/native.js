@@ -18,6 +18,14 @@ export const apiBase = () => {
   const base = globalThis.__WORKORDER_API_BASE__;
   return typeof base === "string" ? base.replace(/\/$/, "") : "";
 };
+// On the web these files are served under /assets; in the bundle they sit next
+// to the page. Markup built inside a module has to ask rather than hard-code,
+// because a bundled /assets/... would 404 against the app instead of the server.
+export const assetUrl = (name) =>
+  isNative() ? `./${name}` : `/assets/${name}`;
+// The bundle has no /console or / document to navigate to — the console is
+// always the current page, addressed by hash.
+export const homeHref = (path) => (isNative() ? "#overview" : path);
 // Fire-and-forget: a plugin that is missing, or a call that rejects because a
 // permission was refused, must never take the app down with it.
 async function callPlugin(name, method, options) {

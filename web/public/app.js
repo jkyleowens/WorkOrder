@@ -10,7 +10,13 @@ import {
   clearTokens,
   hasTokens,
 } from "./api.js";
-import { isNative, setupNative, onResumeSync } from "./native.js";
+import {
+  isNative,
+  setupNative,
+  onResumeSync,
+  assetUrl,
+  homeHref,
+} from "./native.js";
 import {
   esc,
   initials,
@@ -54,7 +60,7 @@ const c = {
 let cleanupTimeGrid;
 let generation = 0,
   authBusy = false;
-const brand = `<a class="brand" href="/">${'<img src="/assets/mark.svg" alt="" width="32" height="32">'}WorkOrder<span>®</span></a>`;
+const brand = `<a class="brand" href="${homeHref("/")}"><img src="${assetUrl("mark.svg")}" alt="" width="32" height="32">WorkOrder<span>®</span></a>`;
 // The bundled app is served from capacitor://localhost, where the pathname is
 // always /index.html — so which auth screen to show, and the tidy-up URLs the
 // web console writes, have to come from the hash instead.

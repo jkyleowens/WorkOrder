@@ -1,7 +1,8 @@
 import { api, write, uploadFile } from "./api.js";
+import { assetUrl, homeHref } from "./native.js";
 import { esc, field, textarea, select, modal, dateLabel } from "./ui.js";
-const brand = `<a class="brand" href="/console">${'<img src="/assets/mark.svg" alt="" width="28" height="28">'}WorkOrder<span>®</span></a>`;
-const topbar = `<header class="field-topbar">${brand}<a class="back-link" href="/console">← Office workspace</a></header>`;
+const brand = `<a class="brand" href="${homeHref("/console")}"><img src="${assetUrl("mark.svg")}" alt="" width="28" height="28">WorkOrder<span>®</span></a>`;
+const topbar = `<header class="field-topbar">${brand}<a class="back-link" href="${homeHref("/console")}">← Office workspace</a></header>`;
 import {
   queue,
   saveQueued,
