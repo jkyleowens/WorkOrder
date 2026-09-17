@@ -1,4 +1,4 @@
-import { api, write } from "./api.js";
+import { api, write, uploadFile } from "./api.js";
 import {
   esc,
   heading,
@@ -32,19 +32,7 @@ const fileField = () =>
   );
 async function attachment(v) {
   if (!v.document?.size) return {};
-  const token = (await api("/auth/csrf")).csrf_token;
-  const response = await fetch("/api/files", {
-    method: "POST",
-    headers: {
-      "X-CSRF-Token": token,
-      "Content-Type": v.document.type,
-      "X-Filename": encodeURIComponent(v.document.name),
-    },
-    body: v.document,
-  });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "Upload failed");
-  return { file_id: result.id };
+  return { file_id: await uploadFile(v.document) };
 }
 const documentLink = (r) =>
   r.file_id
@@ -80,7 +68,9 @@ function profileSummary(p, isOrg) {
 export async function renderTrust(c, route, part) {
   if (route === "trust-profile" || route === "trust-organization") {
     const isOrg = route === "trust-organization";
-    const p = await api(isOrg ? `/organizations/${part}/profile` : `/users/${part}`);
+    const p = await api(
+      isOrg ? `/organizations/${part}/profile` : `/users/${part}`,
+    );
     return (
       heading(
         "Trust & verification",
@@ -210,7 +200,9 @@ async function bidderModal(kind, id) {
   const p = await api(isOrg ? `/organizations/${id}/profile` : `/users/${id}`);
   modal(
     p.full_name || p.name,
-    profileSummary(p, isOrg) + reputation(p.reputation) + credentialCards(p.credentials),
+    profileSummary(p, isOrg) +
+      reputation(p.reputation) +
+      credentialCards(p.credentials),
     null,
   );
 }

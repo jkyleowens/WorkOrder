@@ -1,7 +1,8 @@
 import { trustAction } from "./trust.js";
 import { billingAction } from "./billing.js";
 import { fieldAction } from "./field-console.js";
-import { api, all, write } from "./api.js";
+import { api, all, write, uploadFile, clearTokens } from "./api.js";
+import { isNative } from "./native.js";
 import {
   typeFields,
   typeValues,
@@ -54,8 +55,15 @@ export async function action(c, name, id) {
       "Your saved work will be here when you return.",
       async () => {
         await write("/auth/logout");
+        clearTokens();
         localStorage.removeItem("workorder:field:identity");
-        location.assign("/login");
+        // The bundled app has no /login document to navigate to; dropping the
+        // hash and reloading sends it back through boot() with no token, which
+        // is what renders the sign-in screen.
+        if (isNative()) {
+          location.hash = "";
+          location.reload();
+        } else location.assign("/login");
       },
       "Sign out",
     );
@@ -126,19 +134,8 @@ export async function action(c, name, id) {
         done(async () => {
           const file = v.resume;
           if (!file?.size) throw new Error("Choose a file to upload.");
-          const token = (await api("/auth/csrf")).csrf_token;
-          const response = await fetch("/api/files", {
-            method: "POST",
-            headers: {
-              "X-CSRF-Token": token,
-              "Content-Type": file.type,
-              "X-Filename": encodeURIComponent(file.name),
-            },
-            body: file,
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || "Upload failed");
-          await write("/me", { resume_file_id: result.id }, "PATCH");
+          const fileId = await uploadFile(file);
+          await write("/me", { resume_file_id: fileId }, "PATCH");
         }, "Resume added"),
       "Upload resume",
     );
@@ -173,8 +170,12 @@ export async function action(c, name, id) {
             "That is not the email address on this account. Type it exactly to confirm.",
           );
         await write("/me", { confirm_email: v.confirm_email }, "DELETE");
+        clearTokens();
         localStorage.removeItem("workorder:field:identity");
-        location.assign("/login");
+        if (isNative()) {
+          location.hash = "";
+          location.reload();
+        } else location.assign("/login");
       },
       "Delete my account",
     );

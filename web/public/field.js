@@ -1,4 +1,4 @@
-import { api, write } from "./api.js";
+import { api, write, uploadFile } from "./api.js";
 import { esc, field, textarea, select, modal, dateLabel } from "./ui.js";
 const brand = `<a class="brand" href="/console">${'<img src="/assets/mark.svg" alt="" width="28" height="28">'}WorkOrder<span>®</span></a>`;
 const topbar = `<header class="field-topbar">${brand}<a class="back-link" href="/console">← Office workspace</a></header>`;
@@ -263,19 +263,7 @@ async function upload(file) {
   if (!file?.size) return null;
   if (file.size > 4 * 1024 * 1024)
     throw new Error("Each attachment must be 4 MB or smaller.");
-  const token = (await api("/auth/csrf")).csrf_token;
-  const res = await fetch("/api/files", {
-    method: "POST",
-    headers: {
-      "X-CSRF-Token": token,
-      "Content-Type": file.type,
-      "X-Filename": encodeURIComponent(file.name),
-    },
-    body: file,
-  });
-  const d = await res.json();
-  if (!res.ok) throw new Error(d.error || "Upload failed");
-  return d.id;
+  return uploadFile(file);
 }
 async function documentView(id) {
   const d = await api(`/documents/${id}`);

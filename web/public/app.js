@@ -1,7 +1,16 @@
 import { mountTimeEntry } from "./time-entry.js";
 import { mountTimeGrid } from "./time-grid.js";
 import { mountField, syncField } from "./field-console.js";
-import { api, all, write, refreshCsrf } from "./api.js";
+import {
+  api,
+  all,
+  write,
+  refreshCsrf,
+  signInWithToken,
+  clearTokens,
+  hasTokens,
+} from "./api.js";
+import { isNative, setupNative, onResumeSync } from "./native.js";
 import {
   esc,
   initials,
@@ -46,7 +55,17 @@ let cleanupTimeGrid;
 let generation = 0,
   authBusy = false;
 const brand = `<a class="brand" href="/">${'<img src="/assets/mark.svg" alt="" width="32" height="32">'}WorkOrder<span>®</span></a>`;
-function auth(register = location.pathname === "/register", message = "") {
+// The bundled app is served from capacitor://localhost, where the pathname is
+// always /index.html — so which auth screen to show, and the tidy-up URLs the
+// web console writes, have to come from the hash instead.
+const wantsRegister = () =>
+  isNative()
+    ? location.hash === "#register"
+    : location.pathname === "/register";
+const setUrl = (url) => {
+  if (!isNative()) history.replaceState(null, "", url);
+};
+function auth(register = wantsRegister(), message = "") {
   generation++;
   cleanupTimeGrid?.();
   cleanupTimeGrid = null;
@@ -71,12 +90,23 @@ function auth(register = location.pathname === "/register", message = "") {
         throw new Error(
           "Password must be at most 72 bytes. Try a shorter password.",
         );
-      const result = await write(
-        register ? "/auth/register" : "/auth/login",
-        data,
-      );
-      c.user = result.user;
-      history.replaceState(null, "", "/console#overview");
+      // Native has no usable cookie, so it trades the same credentials for a
+      // token pair. Registering still goes through the normal endpoint; the
+      // token exchange immediately afterwards is what signs the device in.
+      if (isNative()) {
+        if (register) await write("/auth/register", data);
+        c.user = await signInWithToken({
+          email: data.email,
+          password: data.password,
+        });
+      } else {
+        const result = await write(
+          register ? "/auth/register" : "/auth/login",
+          data,
+        );
+        c.user = result.user;
+      }
+      setUrl("/console#overview");
       await c.reload();
     } catch (e) {
       error.textContent = e.message;
@@ -286,7 +316,9 @@ document.addEventListener("click", async (e) => {
     return;
   }
   if (e.target.closest("[data-nav-toggle=more]")) {
-    setMoreOpen(!document.querySelector(".more-sheet")?.classList.contains("open"));
+    setMoreOpen(
+      !document.querySelector(".more-sheet")?.classList.contains("open"),
+    );
     return;
   }
   if (e.target.closest(".more-panel a")) setMoreOpen(false);
@@ -324,7 +356,7 @@ document.addEventListener("keydown", (e) => {
 });
 window.addEventListener("session-expired", () => {
   document.querySelector("#modal").close();
-  history.replaceState(null, "", "/login");
+  setUrl("/login");
   auth(false, "Your session ended. Sign in to continue.");
 });
 window.addEventListener("pageshow", (e) => {
@@ -332,7 +364,18 @@ window.addEventListener("pageshow", (e) => {
 });
 async function boot() {
   try {
-    await refreshCsrf();
+    await setupNative();
+    // Resuming from the background is the moment a phone most often regains
+    // signal, so drain any field time queued while it was offline.
+    onResumeSync(() => {
+      if (c.user)
+        syncField(c.user.id)
+          .catch(() => {})
+          .then(() => c.reload());
+    });
+    // A bearer client is exempt from CSRF and has no cookie to seed, so asking
+    // for a token would only cost a round trip on a jobsite connection.
+    if (!hasTokens()) await refreshCsrf();
     let me;
     try {
       me = await api("/me", { allowAnonymous: true });
@@ -341,11 +384,11 @@ async function boot() {
     }
     if (me) {
       c.user = me.user;
-      history.replaceState(null, "", `/console${location.hash || "#overview"}`);
+      setUrl(`/console${location.hash || "#overview"}`);
       await c.reload();
-    } else auth(location.pathname === "/register");
+    } else auth(wantsRegister());
   } catch (error) {
-    auth(location.pathname === "/register", error.message);
+    auth(wantsRegister(), error.message);
   }
 }
 boot();
