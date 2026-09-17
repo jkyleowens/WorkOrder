@@ -15,6 +15,9 @@ export class ApiError extends Error {
 // or Android Keystore without touching any call site.
 const ACCESS_KEY = "workorder:auth:access";
 const REFRESH_KEY = "workorder:auth:refresh";
+// Exported so secure-store.js can prime its mirror from the Keychain/Keystore
+// before the first request goes out.
+export const TOKEN_KEYS = [ACCESS_KEY, REFRESH_KEY];
 let store = {
   get: (key) => {
     try {

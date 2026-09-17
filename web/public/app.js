@@ -9,7 +9,9 @@ import {
   signInWithToken,
   clearTokens,
   hasTokens,
+  TOKEN_KEYS,
 } from "./api.js";
+import { installSecureTokens } from "./secure-store.js";
 import {
   isNative,
   setupNative,
@@ -375,6 +377,10 @@ installConsoleOffline();
 async function boot() {
   try {
     await setupNative();
+    // Before anything reads a token: on a device this moves it out of web
+    // storage and into the Keychain / Keystore, and loads what is already
+    // there so a returning user is not asked to sign in again.
+    await installSecureTokens(TOKEN_KEYS);
     // Resuming from the background is the moment a phone most often regains
     // signal, so drain any field time queued while it was offline.
     onResumeSync(() => {
