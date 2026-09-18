@@ -422,6 +422,9 @@ const definitions = {
       date: D.DATEONLY,
       note: D.STRING,
       hourly_rate: D.DECIMAL,
+      clock_latitude: D.DECIMAL,
+      clock_longitude: D.DECIMAL,
+      clock_accuracy_m: D.DECIMAL,
     },
   ],
 };

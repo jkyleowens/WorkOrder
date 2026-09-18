@@ -292,3 +292,58 @@ test("crew can read scope instructions but cannot see contract values or sign fo
   assert.deepEqual(view.can_sign, []);
   assert.equal(view.can_edit, false);
 });
+
+test("clock location is stored when offered, optional when not, and validated", async () => {
+  const { field } = svc();
+  const w = await t.work(true);
+  const at = {
+    clock_latitude: 32.397_22,
+    clock_longitude: -90.107_5,
+    clock_accuracy_m: 12.5,
+  };
+  const located = await field.syncTime(
+    w.worker.id,
+    batch(w, [{ ...interval("2026-09-02"), ...at }]),
+  );
+  const row = await t.database.models.Timesheet.findByPk(located.ids[0]);
+  assert.equal(Number(row.clock_latitude), at.clock_latitude);
+  assert.equal(Number(row.clock_longitude), at.clock_longitude);
+  assert.equal(Number(row.clock_accuracy_m), at.clock_accuracy_m);
+
+  // Refusing location must never stop someone recording their hours.
+  const without = await field.syncTime(
+    w.worker.id,
+    batch(w, [interval("2026-09-03")]),
+  );
+  const plain = await t.database.models.Timesheet.findByPk(without.ids[0]);
+  assert.equal(plain.clock_latitude, null);
+  assert.equal(plain.clock_longitude, null);
+  assert.equal(plain.hours, "8.00");
+
+  // A lone coordinate is not a location. Schema failures reach the client as
+  // 422 through the ZodError handler in app.cjs; called directly the service
+  // rejects with the ZodError itself.
+  await assert.rejects(
+    () =>
+      field.syncTime(
+        w.worker.id,
+        batch(w, [{ ...interval("2026-09-04"), clock_latitude: 32.4 }]),
+      ),
+    /latitude and longitude/,
+  );
+  // Nor is a point off the globe.
+  await assert.rejects(
+    () =>
+      field.syncTime(
+        w.worker.id,
+        batch(w, [
+          {
+            ...interval("2026-09-05"),
+            clock_latitude: 99,
+            clock_longitude: -90.1,
+          },
+        ]),
+      ),
+    (e) => e.name === "ZodError",
+  );
+});

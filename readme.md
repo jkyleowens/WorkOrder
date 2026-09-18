@@ -4,7 +4,11 @@ The database-backed application now includes registration/login and a user conso
 
 To run the connected application, configure PostgreSQL and `.env` using the backend guide, run `npm run web`, then open **http://127.0.0.1:3000/register**. The frontend and API share one server and session. Use `npm run test:console` for real-browser PostgreSQL integration tests, and `npm test` for the backend/storage suite.
 
-The original desktop prototype documented below remains available separately through `npm start` or `npm run dev`. It does not use the connected application's accounts or database.
+The same console ships as iOS and Android apps, assembled from `web/public` and
+wrapped with Capacitor so it opens on a jobsite with no signal. See the
+[mobile build and release guide](mobile/README.md).
+
+The original desktop prototype documented below remains available separately through `npm start`. It does not use the connected application's accounts or database.
 
 ## Original desktop prototype
 
@@ -19,7 +23,9 @@ npm install
 npm start
 ```
 
-For a browser preview, run `npm run dev` and open http://127.0.0.1:5173.
+`npm run dev` now starts the connected application on
+http://127.0.0.1:3000, not this prototype — it needs PostgreSQL and `.env` as
+described in the backend guide.
 
 ## Included in this foundation
 

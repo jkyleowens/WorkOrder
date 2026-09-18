@@ -470,7 +470,10 @@ test("failed multi-write transactions roll back entirely", async () => {
 test("HTTP session, CSRF, privacy, validation and logout boundaries", async () => {
   const agent = request.agent(runtime.app);
   await agent.get("/api/me").expect(401);
-  await agent.post("/api/auth/register").send({}).expect(403);
+  // Registration is CSRF-exempt while the client holds no session cookie — a
+  // native app has no cookie jar to seed a token from — so an empty body now
+  // reaches validation instead of being rejected as a forgery.
+  await agent.post("/api/auth/register").send({}).expect(422);
   const token = (await agent.get("/api/auth/csrf").expect(200)).body.csrf_token;
   const auth = await agent
     .post("/api/auth/register")

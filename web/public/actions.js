@@ -1,7 +1,8 @@
 import { trustAction } from "./trust.js";
 import { billingAction } from "./billing.js";
 import { fieldAction } from "./field-console.js";
-import { api, all, write } from "./api.js";
+import { api, all, write, uploadFile, clearTokens } from "./api.js";
+import { isNative } from "./native.js";
 import {
   typeFields,
   typeValues,
@@ -54,8 +55,15 @@ export async function action(c, name, id) {
       "Your saved work will be here when you return.",
       async () => {
         await write("/auth/logout");
+        clearTokens();
         localStorage.removeItem("workorder:field:identity");
-        location.assign("/login");
+        // The bundled app has no /login document to navigate to; dropping the
+        // hash and reloading sends it back through boot() with no token, which
+        // is what renders the sign-in screen.
+        if (isNative()) {
+          location.hash = "";
+          location.reload();
+        } else location.assign("/login");
       },
       "Sign out",
     );
@@ -126,19 +134,8 @@ export async function action(c, name, id) {
         done(async () => {
           const file = v.resume;
           if (!file?.size) throw new Error("Choose a file to upload.");
-          const token = (await api("/auth/csrf")).csrf_token;
-          const response = await fetch("/api/files", {
-            method: "POST",
-            headers: {
-              "X-CSRF-Token": token,
-              "Content-Type": file.type,
-              "X-Filename": encodeURIComponent(file.name),
-            },
-            body: file,
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || "Upload failed");
-          await write("/me", { resume_file_id: result.id }, "PATCH");
+          const fileId = await uploadFile(file);
+          await write("/me", { resume_file_id: fileId }, "PATCH");
         }, "Resume added"),
       "Upload resume",
     );
@@ -146,8 +143,41 @@ export async function action(c, name, id) {
     return confirm(
       "Remove resume",
       "Hiring managers will no longer be able to view it.",
-      () => done(() => write("/me", { resume_file_id: null }, "PATCH"), "Resume removed"),
+      () =>
+        done(
+          () => write("/me", { resume_file_id: null }, "PATCH"),
+          "Resume removed",
+        ),
       "Remove resume",
+    );
+  if (name === "delete-account")
+    return modal(
+      "Delete your account",
+      `<p>This cannot be undone. Your profile, skills, resume, credentials, notifications and sign-in are removed for good.</p><p>Awarded work, recorded hours, payments, lien waivers, signed documents, disputes and reviews stay on WorkOrder for the people who depend on them, with your personal details taken off them.</p>` +
+        field(
+          `Type ${c.user.email} to confirm`,
+          "confirm_email",
+          "email",
+          "",
+          'required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"',
+        ),
+      async (v) => {
+        if (
+          (v.confirm_email || "").trim().toLowerCase() !==
+          c.user.email.toLowerCase()
+        )
+          throw new Error(
+            "That is not the email address on this account. Type it exactly to confirm.",
+          );
+        await write("/me", { confirm_email: v.confirm_email }, "DELETE");
+        clearTokens();
+        localStorage.removeItem("workorder:field:identity");
+        if (isNative()) {
+          location.hash = "";
+          location.reload();
+        } else location.assign("/login");
+      },
+      "Delete my account",
     );
   if (name === "person") {
     const u = await api(`/users/${id}`);
@@ -268,7 +298,13 @@ export async function action(c, name, id) {
     return modal(
       "Post a project",
       actor() +
-        field("Project title", "title", "text", "", 'required maxlength="200"') +
+        field(
+          "Project title",
+          "title",
+          "text",
+          "",
+          'required maxlength="200"',
+        ) +
         textarea("Description", "description", "", 'maxlength="10000"') +
         textarea(
           "Subdivisions (one scope per line, optional)",

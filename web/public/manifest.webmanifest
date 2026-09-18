@@ -1,0 +1,47 @@
+{
+  "name": "WorkOrder",
+  "short_name": "WorkOrder",
+  "description": "Post a project once, and split it into scopes that get bid, staffed, timed, and paid on their own.",
+  "id": "/console",
+  "start_url": "/console",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f2f2f3",
+  "theme_color": "#5980a6",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Field work",
+      "short_name": "Field",
+      "description": "Clock in and out against an awarded scope",
+      "url": "/field"
+    },
+    {
+      "name": "Time & reports",
+      "short_name": "Time",
+      "description": "Review and log your hours",
+      "url": "/console#time"
+    }
+  ]
+}

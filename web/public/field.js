@@ -1,7 +1,9 @@
-import { api, write } from "./api.js";
+import { api, write, uploadFile } from "./api.js";
+import { assetUrl, homeHref } from "./native.js";
+import { photoField, mountPhotos } from "./native-camera.js";
 import { esc, field, textarea, select, modal, dateLabel } from "./ui.js";
-const brand = `<a class="brand" href="/console">${'<img src="/assets/mark.svg" alt="" width="28" height="28">'}WorkOrder<span>®</span></a>`;
-const topbar = `<header class="field-topbar">${brand}<a class="back-link" href="/console">← Office workspace</a></header>`;
+const brand = `<a class="brand" href="${homeHref("/console")}"><img src="${assetUrl("mark.svg")}" alt="" width="28" height="28">WorkOrder<span>®</span></a>`;
+const topbar = `<header class="field-topbar">${brand}<a class="back-link" href="${homeHref("/console")}">← Office workspace</a></header>`;
 import {
   queue,
   saveQueued,
@@ -263,19 +265,7 @@ async function upload(file) {
   if (!file?.size) return null;
   if (file.size > 4 * 1024 * 1024)
     throw new Error("Each attachment must be 4 MB or smaller.");
-  const token = (await api("/auth/csrf")).csrf_token;
-  const res = await fetch("/api/files", {
-    method: "POST",
-    headers: {
-      "X-CSRF-Token": token,
-      "Content-Type": file.type,
-      "X-Filename": encodeURIComponent(file.name),
-    },
-    body: file,
-  });
-  const d = await res.json();
-  if (!res.ok) throw new Error(d.error || "Upload failed");
-  return d.id;
+  return uploadFile(file);
 }
 async function documentView(id) {
   const d = await api(`/documents/${id}`);
@@ -487,7 +477,8 @@ root.addEventListener("click", async (e) => {
         "Save correction",
       );
     }
-    if (name === "report")
+    if (name === "report") {
+      let camera;
       modal(
         "Add daily report",
         field("Report date", "report_date", "date", day(), "required") +
@@ -502,15 +493,13 @@ root.addEventListener("click", async (e) => {
           field("Weather", "weather") +
           textarea("Deliveries", "deliveries") +
           textarea("Delays", "delays") +
-          field(
-            "Photos (up to 12; 4 MB each)",
-            "photos",
-            "file",
-            "",
-            'accept="image/jpeg,image/png,image/webp" multiple capture="environment"',
-          ),
+          photoField({ name: "photos", legend: "Progress photos", max: 12 }),
         async (v) => {
-          const photos = [...document.querySelector("[name=photos]").files];
+          // Photos are downscaled on the device first: a current phone camera
+          // writes 5-12 MB per shot and /api/files refuses anything over 4 MB,
+          // so an unresized capture fails exactly when it matters — standing on
+          // site with one bar of signal.
+          const photos = await camera.files();
           if (photos.length > 12) throw new Error("Choose at most 12 photos.");
           const file_ids = [];
           for (const photo of photos) file_ids.push(await upload(photo));
@@ -527,6 +516,14 @@ root.addEventListener("click", async (e) => {
         },
         "Save daily report",
       );
+      // modal() renders synchronously, so the field exists to wire up now. On a
+      // native build this reveals the camera buttons; on the web it leaves the
+      // file input exactly as it was.
+      camera = mountPhotos(document.querySelector("#modal"), {
+        name: "photos",
+        max: 12,
+      });
+    }
     if (name === "plan") {
       if (offline())
         throw new Error("Reconnect before editing the shared schedule.");

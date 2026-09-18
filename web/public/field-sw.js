@@ -1,10 +1,15 @@
-const CACHE = "workorder-field-v1";
+// Bumped whenever SHELL changes: one module missing from this list fails the
+// whole import graph, and the field page is the one that has to work with no
+// signal.
+const CACHE = "workorder-field-v2";
 const SHELL = [
   "/field",
   "/assets/field.js",
   "/assets/field.css",
   "/assets/field-store.js",
   "/assets/api.js",
+  "/assets/native.js",
+  "/assets/native-camera.js",
   "/assets/ui.js",
   "/assets/styles.css",
   "/assets/industry.css",
